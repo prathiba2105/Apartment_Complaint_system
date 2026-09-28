@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Notifications - Apartment Care Admin</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar" id="appSidebar"></aside>
+    <div class="main-wrapper">
+      <header class="topbar" id="appTopbar"></header>
+      <main class="main-content">
+        <div class="page-header flex-between">
+          <div>
+            <div class="welcome-title">Notifications</div>
+            <div class="welcome-sub">System alerts and events</div>
+          </div>
+          <button class="btn btn-blue" id="markAllBtn">Mark All as Read</button>
+        </div>
+        <div id="notifList"></div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/socket.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!requireAuth('ADMIN')) return;
+      buildSidebar('ADMIN', 'notifications');
+      buildTopbar('ADMIN');
+      loadNotifications('ADMIN', 'notifList');
+      loadNotificationBadge('ADMIN');
+      document.getElementById('markAllBtn').addEventListener('click', async () => {
+        try {
+          await API.patch('/api/admin/notifications/read-all', {});
+          toast.success('All notifications marked as read');
+          loadNotifications('ADMIN', 'notifList');
+          loadNotificationBadge('ADMIN');
+        } catch (e) { toast.error('Failed'); }
+      });
+      if (window.io) initSocket();
+      onRealtimeEvents && onRealtimeEvents({
+        notificationCreated: () => loadNotifications('ADMIN', 'notifList'),
+        newComplaint: () => loadNotifications('ADMIN', 'notifList'),
+        complaintStatusUpdated: () => loadNotifications('ADMIN', 'notifList'),
+      });
+    });
+  </script>
+</body>
+</html>

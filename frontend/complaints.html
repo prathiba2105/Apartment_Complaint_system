@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Complaints - Apartment Care</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar" id="appSidebar"></aside>
+    <div class="main-wrapper">
+      <header class="topbar" id="appTopbar"></header>
+      <main class="main-content">
+        <div class="page-header flex-between">
+          <div>
+            <div class="welcome-title">My Complaints</div>
+            <div class="welcome-sub">Track all your submitted complaints</div>
+          </div>
+          <a href="new-complaint.html" class="btn btn-green">+ New Complaint</a>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h3>All Complaints</h3>
+            <div class="search-input">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="searchComplaints" placeholder="Search complaints..." />
+            </div>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr><th>#</th><th>Title</th><th>Category</th><th>Priority</th><th>Status</th><th>Date</th><th>Action</th></tr>
+                </thead>
+                <tbody id="complaintsBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/socket.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    let allComplaints = [];
+
+    async function loadComplaints() {
+      try {
+        allComplaints = await API.get('/api/user/complaints');
+        renderComplaints(allComplaints);
+      } catch (e) {
+        document.getElementById('complaintsBody').innerHTML =
+          '<tr><td colspan="7"><div class="empty-state">Failed to load complaints.</div></td></tr>';
+      }
+    }
+
+    function renderComplaints(list) {
+      const tbody = document.getElementById('complaintsBody');
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state">No complaints found.</div></td></tr>';
+        return;
+      }
+      tbody.innerHTML = list
+        .map((c, i) => `
+          <tr>
+            <td class="muted-cell">${i + 1}</td>
+            <td class="title-cell">${c.title}<br/><span class="text-muted" style="font-size:12px">${c.complaintId}</span></td>
+            <td><span class="badge badge-active">${c.category}</span></td>
+            <td>${priorityBadge(c.priority)}</td>
+            <td>${statusBadge(c.status)}</td>
+            <td class="muted-cell">${formatDate(c.createdAt)}</td>
+            <td><button class="btn btn-blue btn-sm" data-view="${c._id}">View</button></td>
+          </tr>`)
+        .join('');
+      tbody.querySelectorAll('[data-view]').forEach((btn) =>
+        btn.addEventListener('click', () => (window.location.href = `complaint-details.html?id=${btn.dataset.view}`))
+      );
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!requireAuth('USER')) return;
+      buildSidebar('USER', 'complaints');
+      buildTopbar('USER');
+      loadComplaints();
+      loadNotificationBadge('USER');
+      document.getElementById('searchComplaints').addEventListener('input', (e) => {
+        const q = e.target.value.toLowerCase();
+        renderComplaints(allComplaints.filter((c) => c.title.toLowerCase().includes(q) || c.complaintId.toLowerCase().includes(q)));
+      });
+      onRealtimeEvents({ complaintStatusUpdated: () => loadComplaints(), complaintCreated: () => loadComplaints() });
+    });
+  </script>
+</body>
+</html>

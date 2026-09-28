@@ -1,0 +1,576 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Complaint Details - Apartment Care</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar" id="appSidebar"></aside>
+    <div class="main-wrapper">
+      <header class="topbar" id="appTopbar"></header>
+      <main class="main-content">
+        <div class="page-header flex-between">
+          <div>
+            <div class="welcome-title" id="complaintTitle">Complaint Details</div>
+            <div class="welcome-sub" id="complaintSubtitle">Loading...</div>
+          </div>
+          <a href="javascript:history.back()" class="btn btn-outline">← Back</a>
+        </div>
+
+        <div class="dash-grid-2 mt-2">
+          <!-- Left: details -->
+          <div class="card">
+            <div class="card-head"><h3>Complaint Information</h3></div>
+            <div class="card-body" id="complaintInfo"></div>
+          </div>
+          <!-- Right: timeline -->
+          <div class="card">
+            <div class="card-head"><h3>Timeline</h3></div>
+            <div class="card-body" id="timelineBody"></div>
+          </div>
+        </div>
+
+        <!-- Worker action panel -->
+        <div class="card mt-2" id="workerActionCard" style="display:none;">
+          <div class="card-head"><h3>Worker Actions</h3></div>
+          <div class="card-body" id="workerActions"></div>
+        </div>
+
+        <!-- User action panel -->
+        <div class="card mt-2" id="userActionCard" style="display:none;">
+          <div class="card-head"><h3>Your Actions</h3></div>
+          <div class="card-body" id="userActions"></div>
+        </div>
+
+        <!-- Chat / messaging panel -->
+        <div class="card mt-2">
+          <div class="card-head"><h3>Conversation with Worker</h3></div>
+          <div class="card-body">
+            <div id="chatBox" style="max-height:360px;overflow-y:auto;background:var(--bg);border-radius:10px;padding:14px;margin-bottom:12px;"></div>
+            <div id="chatDisabled" class="text-muted" style="font-size:13px;padding:4px 2px;display:none;">Messaging is available once a worker is assigned to this complaint.</div>
+            <div class="flex gap-1" style="align-items:stretch">
+              <input type="text" class="form-control no-icon" id="chatInput" placeholder="Type a message..." autocomplete="off" />
+              <button class="btn btn-green" id="chatSend">Send</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Admin action panel -->
+        <div class="card mt-2" id="adminActionCard" style="display:none;">
+          <div class="card-head"><h3>Admin Actions</h3></div>
+          <div class="card-body" id="adminActions"></div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Rating modal -->
+  <div class="modal-overlay" id="ratingModal">
+    <div class="modal">
+      <div class="modal-header"><h3>Rate the Worker</h3><button class="modal-close" onclick="closeModal('ratingModal')">&times;</button></div>
+      <div class="modal-body">
+        <div class="star-row" id="starRow" style="font-size:30px;cursor:pointer;margin-bottom:10px;">
+          <span data-star="1">☆</span><span data-star="2">☆</span><span data-star="3">☆</span><span data-star="4">☆</span><span data-star="5">☆</span>
+        </div>
+        <div class="form-group"><label class="form-label">Feedback</label><textarea class="form-control no-icon" id="ratingFeedback" placeholder="How was the service?"></textarea></div>
+        <div class="toggle-row"><span>Completed on time?</span><input type="checkbox" id="ratingOnTime" checked /></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('ratingModal')">Cancel</button>
+        <button class="btn btn-purple" id="ratingSubmit">Submit Rating</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Assign modal -->
+  <div class="modal-overlay" id="assignModal">
+    <div class="modal lg">
+      <div class="modal-header">
+        <h3>Assign Worker</h3>
+        <button class="modal-close" onclick="closeModal('assignModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2"><strong>Complaint:</strong> <span id="assignComplaintTitle"></span></p>
+        <p class="text-muted mb-2" style="font-size:13px">Select a worker. Matching category &amp; available workers recommended first. Admin makes the final decision.</p>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Worker</th><th>Category</th><th>Experience</th><th>Availability</th><th>Current Tasks</th></tr></thead>
+            <tbody id="assignWorkerBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('assignModal')">Cancel</button>
+        <button class="btn btn-purple" id="confirmAssignBtn">Assign Worker</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Note modal -->
+  <div class="modal-overlay" id="noteModal">
+    <div class="modal">
+      <div class="modal-header"><h3>Add Work Note</h3><button class="modal-close" onclick="closeModal('noteModal')">&times;</button></div>
+      <div class="modal-body">
+        <div class="form-group"><label class="form-label">Note</label><textarea class="form-control no-icon" id="noteText" placeholder="Add a work note"></textarea></div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('noteModal')">Cancel</button>
+        <button class="btn btn-blue" id="noteSubmit">Add Note</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/socket.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    const params = new URLSearchParams(window.location.search);
+    const complaintId = params.get('id');
+    let role = AuthStore.getRole();
+    let currentComplaint = null;
+    let timelineData = [];
+
+    async function loadComplaint() {
+      if (!complaintId) {
+        toast.error('No complaint specified');
+        return;
+      }
+      try {
+        let data;
+        if (role === 'ADMIN') {
+          data = await API.get(`/api/admin/complaints/${complaintId}`);
+          currentComplaint = data.complaint;
+          timelineData = data.timeline || [];
+        } else if (role === 'WORKER') {
+          data = await API.get(`/api/worker/complaints/${complaintId}`);
+          currentComplaint = data;
+          timelineData = [];
+        } else {
+          data = await API.get(`/api/user/complaints/${complaintId}`);
+          currentComplaint = data;
+          timelineData = [];
+        }
+        renderDetails();
+        renderTimeline();
+        renderImages();
+        if (role === 'WORKER') renderWorkerActions();
+        if (role === 'ADMIN') renderAdminActions();
+        if (role === 'USER') renderUserActions();
+        loadChat();
+      } catch (e) {
+        toast.error(e.message || 'Failed to load complaint');
+      }
+    }
+
+    function renderDetails() {
+      const c = currentComplaint;
+      const user = c.userId || {};
+      const worker = c.assignedWorker
+        ? `<div class="flex-center" style="justify-content:flex-start;gap:8px"><div class="avatar sm">${initials(c.assignedWorker.name)}</div><div>${c.assignedWorker.name}<br/><span class="text-muted" style="font-size:12px">${c.assignedWorker.category || ''}</span></div></div>`
+        : '<span class="text-muted">Not assigned</span>';
+
+      const rows = [
+        ['Complaint ID', c.complaintId],
+        ['Title', c.title],
+        ['Description', c.description || '—'],
+        ['Category', `<span class="badge badge-active">${c.category}</span>`],
+        ['Priority', priorityBadge(c.priority)],
+        ['Status', statusBadge(c.status)],
+        ['Apartment', c.apartment || '—'],
+        ['Location', `Block ${c.block || '—'}, Floor ${c.floor || '—'}, Flat ${c.flat || '—'}`],
+        ['Submitted By', user.name || '—'],
+        ['Preferred Date', c.preferredDate ? formatDate(c.preferredDate) : '—'],
+        ['Preferred Time', c.preferredTime || '—'],
+        ['Assigned Worker', worker],
+        ['Assigned At', c.assignedAt ? formatDate(c.assignedAt) : '—'],
+        ['Created', formatDate(c.createdAt)],
+      ];
+      document.getElementById('complaintTitle').textContent = c.title;
+      document.getElementById('complaintSubtitle').textContent = `${c.complaintId} • ${statusBadge(c.status).replace(/<[^>]+>/g, '')}`;
+      document.getElementById('complaintInfo').innerHTML = rows
+        .filter(([k, v]) => v && v !== '—')
+        .map(([k, v]) => `
+          <div class="flex-between" style="padding:9px 0;border-bottom:1px solid var(--border);">
+            <span class="text-muted" style="font-weight:600;font-size:13px">${k}</span>
+            <span style="font-size:13.5px;text-align:right;max-width:60%">${v}</span>
+          </div>`)
+        .join('') + (c.additionalNotes ? `<div class="mt-2"><strong>Additional Notes:</strong><div class="text-muted mt-1">${c.additionalNotes}</div></div>` : '') +
+        (c.workNotes && c.workNotes.length ? `<div class="mt-2"><strong>Work Notes:</strong>${c.workNotes.map(n=>`<div class="text-muted mt-1" style="font-size:13px">• ${n.text || ''}</div>`).join('')}</div>` : '');
+
+      // update title page
+      document.title = `${c.title} - Apartment Care`;
+    }
+
+    function renderTimeline() {
+      const container = document.getElementById('timelineBody');
+      if (role !== 'ADMIN') {
+        container.innerHTML = '<div class="empty-state">Timeline is only shown to Admin.</div>';
+        return;
+      }
+      if (!timelineData.length) {
+        container.innerHTML = '<div class="empty-state">No timeline entries yet.</div>';
+        return;
+      }
+      container.innerHTML = timelineData
+        .map((t) => `
+          <div style="display:flex;gap:14px;padding:10px 0;">
+            <div class="avatar sm" style="background:#E4EDF7;color:var(--navy)">•</div>
+            <div>
+              <div class="font-bold" style="font-size:13.5px;color:var(--text)">${t.action}</div>
+              <div class="text-muted" style="font-size:12.5px">${t.description || ''}</div>
+              <div class="text-muted" style="font-size:11.5px;margin-top:2px">${t.performedBy || ''} • ${formatDate(t.timestamp)}</div>
+            </div>
+          </div>`)
+        .join('');
+    }
+
+    async function renderImages() {
+      const info = document.getElementById('complaintInfo');
+      const images = currentComplaint.images || [];
+      if (images.length) {
+        info.innerHTML += `<div class="mt-2"><strong>Images:</strong><div class="flex gap-1 mt-1" style="flex-wrap:wrap">${images
+          .map((img) => `<img src="${img}" alt="complaint" style="width:120px;height:96px;object-fit:cover;border-radius:8px;border:1px solid var(--border)"/>`)
+          .join('')}</div></div>`;
+      }
+      const attachments = currentComplaint.attachments || [];
+      if (attachments.length) {
+        let html = `<div class="mt-2"><strong>Attachments:</strong><div class="mt-1" style="display:flex;flex-direction:column;gap:8px">`;
+        for (const a of attachments) {
+          let url = null;
+          if (a.s3Key) {
+            try {
+              const res = await API.post('/api/attachments/sign', { s3Key: a.s3Key });
+              url = res.url;
+            } catch (e) {
+              url = null;
+            }
+          }
+          const isImage = (a.fileType || '').startsWith('image/');
+          const label = escapeHtml(a.fileName || 'attachment');
+          if (url) {
+            html += isImage
+              ? `<a href="${url}" target="_blank" rel="noopener"><img src="${url}" alt="${label}" title="${label}" style="width:120px;height:96px;object-fit:cover;border-radius:8px;border:1px solid var(--border)"/></a>`
+              : `<a class="btn btn-ghost btn-sm" href="${url}" target="_blank" rel="noopener">📎 ${label}${a.fileSize ? ' (' + Math.round(a.fileSize / 1024) + ' KB)' : ''}</a>`;
+          } else {
+            html += `<span class="text-muted" style="font-size:13px">📎 ${label}${a.fileSize ? ' (' + Math.round(a.fileSize / 1024) + ' KB)' : ''}</span>`;
+          }
+        }
+        info.innerHTML += html + '</div></div>';
+      }
+    }
+
+    function renderUserActions() {
+      const c = currentComplaint;
+      const card = document.getElementById('userActionCard');
+      const box = document.getElementById('userActions');
+      card.style.display = 'block';
+      let actions = '';
+      if (c.status === 'COMPLETED') {
+        actions = `<button class="btn btn-green" data-act="confirm">✓ Confirm Completion</button>
+                   <button class="btn btn-blue" data-act="reopen">Reopen Complaint</button>`;
+      } else if (c.status === 'CLOSED') {
+        actions = `<span class="font-bold text-green">✓ This complaint is closed, thank you!</span>
+                   <button class="btn btn-blue" data-act="reopen" style="margin-left:10px">Reopen Complaint</button>
+                   <button class="btn btn-purple" data-act="review" style="margin-left:10px">Review Worker</button>`;
+      } else if (c.status === 'REOPENED') {
+        actions = `<span class="text-muted">Awaiting reassignment by admin for this reopened complaint.</span>`;
+      } else {
+        actions = `<span class="text-muted">Track your complaint here. Actions appear once the work is completed.</span>`;
+      }
+      box.innerHTML = `<div class="flex gap-2">${actions}</div>`;
+      box.querySelectorAll('[data-act]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const action = btn.dataset.act;
+          if (action === 'review') return openRatingModal();
+          setBtnLoading(btn, true, '', 'Processing...');
+          try {
+            const url = action === 'confirm'
+              ? `/api/user/complaints/${complaintId}/confirm`
+              : `/api/user/complaints/${complaintId}/reopen`;
+            const res = await API.patch(url, {});
+            toast.success(res.message || 'Action completed');
+            if (action === 'confirm') openRatingModal();
+            loadComplaint();
+          } catch (e) {
+            toast.error(e.message || 'Action failed');
+          } finally {
+            setBtnLoading(btn, false);
+          }
+        });
+      });
+    }
+
+    function renderChat() {
+      const box = document.getElementById('chatBox');
+      const disabled = document.getElementById('chatDisabled');
+      const hasWorker = currentComplaint && currentComplaint.assignedWorker;
+      if (!hasWorker) {
+        box.innerHTML = '<div class="empty-state">No conversation yet.</div>';
+        disabled.style.display = 'block';
+        return;
+      }
+      disabled.style.display = 'none';
+      if (!window.__messages || !window.__messages.length) {
+        box.innerHTML = '<div class="empty-state">Start the conversation about this complaint.</div>';
+        return;
+      }
+      box.innerHTML = window.__messages.map((m) => {
+        const mine = m.senderModel === (role === 'ADMIN' ? 'Admin' : role === 'WORKER' ? 'Worker' : 'User');
+        return `<div style="display:flex;justify-content:${mine ? 'flex-end' : 'flex-start'};margin-bottom:8px">
+          <div style="max-width:75%;background:${mine ? 'var(--blue-light)' : '#fff'};border:1px solid var(--border);border-radius:10px;padding:8px 12px">
+            <div style="font-size:11.5px;color:var(--muted);font-weight:600">${m.senderName || (m.senderModel || '')}</div>
+            ${m.image ? `<img src="${m.image}" alt="msg" style="width:160px;max-height:120px;object-fit:cover;border-radius:6px;margin:4px 0"/>` : ''}
+            ${m.text ? `<div style="font-size:13.5px;color:var(--text)">${escapeHtml(m.text)}</div>` : ''}
+            <div style="font-size:10.5px;color:var(--muted);margin-top:2px">${formatTime(m.createdAt)}</div>
+          </div>
+        </div>`;
+      }).join('');
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function loadChat() {
+      try {
+        const msgs = await API.get(`/api/complaints/${complaintId}/messages`);
+        window.__messages = msgs || [];
+      } catch (e) {
+        window.__messages = [];
+      }
+      renderChat();
+    }
+
+    async function sendChatMsg() {
+      const input = document.getElementById('chatInput');
+      const text = input.value.trim();
+      if (!text) return toast.warning('Type a message first');
+      try {
+        await API.post(`/api/complaints/${complaintId}/messages`, { text });
+        input.value = '';
+        loadChat();
+        toast.success('Message sent');
+      } catch (e) {
+        toast.error(e.message || 'Failed to send message');
+      }
+    }
+
+    function openRatingModal() {
+      window.__rating = 0;
+      highlightStars(0);
+      document.getElementById('ratingFeedback').value = '';
+      document.getElementById('ratingOnTime').checked = true;
+      document.getElementById('ratingModal').classList.add('open');
+    }
+    function highlightStars(n) {
+      document.querySelectorAll('#starRow span').forEach((s) => {
+        s.textContent = parseInt(s.dataset.star, 10) <= n ? '★' : '☆';
+      });
+    }
+    function renderWorkerActions() {
+      const c = currentComplaint;
+      const card = document.getElementById('workerActionCard');
+      const box = document.getElementById('workerActions');
+      card.style.display = 'block';
+      let actions = '';
+      if (c.status === 'ASSIGNED') {
+        actions = `<button class="btn btn-green" data-act="accept">Accept Complaint</button>
+                   <button class="btn btn-blue" data-act="start">Start Work</button>
+                   <button class="btn btn-danger" data-act="reject">Reject Assignment</button>`;
+      } else if (c.status === 'IN_PROGRESS') {
+        actions = `<button class="btn btn-blue" data-act="note">Add Work Note</button>
+                   <button class="btn btn-green" data-act="complete">Mark as Completed</button>`;
+      } else if (c.status === 'COMPLETED') {
+        actions = `<span class="font-bold text-green">✓ This complaint is completed</span>`;
+      } else {
+        actions = `<span class="text-muted">Awaiting admin to assign this complaint to you.</span>`;
+      }
+      box.innerHTML = `<div class="flex gap-2">${actions}</div>`;
+
+      box.querySelectorAll('[data-act]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const action = btn.dataset.act;
+          setBtnLoading(btn, true, '', 'Processing...');
+          try {
+            let url;
+            if (action === 'accept') url = `/api/worker/complaints/${complaintId}/accept`;
+            else if (action === 'start') url = `/api/worker/complaints/${complaintId}/start`;
+            else if (action === 'complete') url = `/api/worker/complaints/${complaintId}/complete`;
+            else if (action === 'reject') {
+              if (!confirm('Reject this assignment? The complaint will return to the pool.')) {
+                setBtnLoading(btn, false);
+                return;
+              }
+              url = `/api/worker/complaints/${complaintId}/reject`;
+            }
+            if (action === 'note') {
+              document.getElementById('noteModal').classList.add('open');
+              return;
+            }
+            const res = await API.patch(url, {});
+            toast.success(res.message || 'Action completed');
+            loadComplaint();
+          } catch (e) {
+            toast.error(e.message || 'Action failed');
+          } finally {
+            setBtnLoading(btn, false);
+          }
+        });
+      });
+    }
+
+    document.getElementById('noteSubmit').addEventListener('click', async () => {
+      const btn = document.getElementById('noteSubmit');
+      setBtnLoading(btn, true, '', 'Saving...');
+      try {
+        await API.post(`/api/worker/complaints/${complaintId}/notes`, {
+          text: document.getElementById('noteText').value,
+        });
+        toast.success('Note added');
+        closeModal('noteModal');
+        document.getElementById('noteText').value = '';
+        loadComplaint();
+      } catch (e) {
+        toast.error('Failed to add note');
+      } finally {
+        setBtnLoading(btn, false);
+      }
+    });
+
+    document.getElementById('chatSend').addEventListener('click', sendChatMsg);
+    document.getElementById('chatInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') sendChatMsg();
+    });
+    document.querySelectorAll('#starRow span').forEach((s) => {
+      s.addEventListener('click', () => {
+        window.__rating = parseInt(s.dataset.star, 10);
+        highlightStars(window.__rating);
+      });
+    });
+    document.getElementById('ratingSubmit').addEventListener('click', async () => {
+      const btn = document.getElementById('ratingSubmit');
+      if (!window.__rating) return toast.warning('Select a star rating (1-5)');
+      setBtnLoading(btn, true, '', 'Submitting...');
+      try {
+        await API.post(`/api/complaints/${complaintId}/ratings`, {
+          rating: window.__rating,
+          feedback: document.getElementById('ratingFeedback').value,
+          onTime: document.getElementById('ratingOnTime').checked,
+        });
+        toast.success('Thank you for your feedback!');
+        closeModal('ratingModal');
+        loadComplaint();
+      } catch (e) {
+        toast.error(e.message || 'Failed to submit rating');
+      } finally {
+        setBtnLoading(btn, false);
+      }
+    });
+
+    function renderAdminActions() {
+      const c = currentComplaint;
+      const card = document.getElementById('adminActionCard');
+      const box = document.getElementById('adminActions');
+      card.style.display = 'block';
+      let html = '';
+      if (c.status === 'PENDING') {
+        html = `<button class="btn btn-purple" id="assignBtn">Assign Worker</button>`;
+      } else if (c.status === 'ASSIGNED' || c.status === 'IN_PROGRESS' || c.status === 'COMPLETED' || c.status === 'REOPENED') {
+        html = `
+          <button class="btn btn-purple" id="assignBtn">Reassign Worker</button>
+          ${c.status !== 'CANCELLED' ? `<button class="btn btn-danger" data-status="CANCELLED">Cancel Complaint</button>` : ''}
+          ${c.status !== 'COMPLETED' && c.status !== 'CANCELLED' ? `<button class="btn btn-green" data-status="COMPLETED">Mark Completed</button>` : ''}`;
+      } else if (c.status === 'CANCELLED') {
+        html = `<button class="btn btn-blue" data-status="REOPENED">Reopen Complaint</button>`;
+      }
+      box.innerHTML = `<div class="flex gap-2">${html}</div>`;
+
+      const assignBtn = document.getElementById('assignBtn');
+      if (assignBtn) assignBtn.addEventListener('click', async () => {
+        try {
+          const workers = await API.get(`/api/admin/workers/available?category=${encodeURIComponent(c.category)}`);
+          const recommended = recommendWorker(workers, c.category);
+          const tbody = document.getElementById('assignWorkerBody');
+          document.getElementById('assignComplaintTitle').textContent = `${c.title} (${c.complaintId})`;
+          if (!recommended.length) {
+            tbody.innerHTML = '<tr><td colspan="5"><div class="empty-state">No available worker found.</div></td></tr>';
+          } else {
+            tbody.innerHTML = recommended.map((w, i) => `
+              <tr class="selectable-worker aw-row" data-aw='${JSON.stringify(w).replace(/'/g, '&#39;')}' style="cursor:pointer">
+                <td><div class="flex-center" style="justify-content:flex-start;gap:8px"><div class="avatar sm">${initials(w.name)}</div><div>${i === 0 ? '<span class="badge badge-active">Recommended</span> ' : ''}${w.name}</div></div></td>
+                <td><span class="badge badge-active">${w.category}</span></td>
+                <td class="muted-cell">${w.experience || 0} yrs</td>
+                <td>${availabilityBadge(w.availabilityStatus)}</td>
+                <td class="muted-cell">${w.currentTaskCount || 0}</td>
+              </tr>`).join('');
+          }
+          window.__selectedWorker = null;
+          let worker = null;
+          document.querySelectorAll('.aw-row').forEach((row) => {
+            row.addEventListener('click', () => {
+              document.querySelectorAll('.aw-row').forEach((r) => (r.style.background = ''));
+              row.style.background = '#E4F6ED';
+              try { worker = JSON.parse(row.getAttribute('data-aw').replace(/&#39;/g, "'")); } catch (e2) {}
+            });
+          });
+          document.getElementById('assignModal').classList.add('open');
+
+          const confirmBtn = document.getElementById('confirmAssignBtn');
+          confirmBtn.onclick = async () => {
+            if (!worker) return toast.warning('Please select a worker');
+            setBtnLoading(confirmBtn, true, '', 'Assigning...');
+            try {
+              const res = await API.post(`/api/admin/complaints/${complaintId}/assign`, { workerId: worker._id });
+              toast.success(res.message || 'Complaint assigned successfully');
+              closeModal('assignModal');
+              loadComplaint();
+            } catch (e) {
+              toast.error(e.message || 'Unable to assign worker');
+            } finally {
+              setBtnLoading(confirmBtn, false);
+            }
+          };
+        } catch (e) {
+          toast.error('Failed to load workers');
+        }
+      });
+
+      box.querySelectorAll('[data-status]').forEach((btn) => {
+        btn.addEventListener('click', async () => {
+          const status = btn.dataset.status;
+          setBtnLoading(btn, true, '', 'Updating...');
+          try {
+            await API.patch(`/api/admin/complaints/${complaintId}/status`, { status });
+            toast.success(`Complaint ${status}`);
+            loadComplaint();
+          } catch (e) {
+            toast.error(e.message || 'Failed to update status');
+          } finally {
+            setBtnLoading(btn, false);
+          }
+        });
+      });
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!requireAuth()) return;
+      const role = AuthStore.getRole();
+      buildSidebar(role, 'complaints');
+      buildTopbar(role);
+      loadComplaint();
+      if (role !== 'ADMIN') loadNotificationBadge(role);
+      initSocket();
+      onRealtimeEvents({
+        complaintStatusUpdated: (d) => {
+          if (d.complaintId === complaintId) loadComplaint();
+        },
+      });
+    });
+  </script>
+</body>
+</html>

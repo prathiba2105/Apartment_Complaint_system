@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Profile - Apartment Care (Worker)</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar" id="appSidebar"></aside>
+    <div class="main-wrapper">
+      <header class="topbar" id="appTopbar"></header>
+      <main class="main-content">
+        <div class="page-header">
+          <div class="welcome-title">My Profile</div>
+          <div class="welcome-sub">Your worker details and availability</div>
+        </div>
+        <div class="dash-grid-2-equ">
+          <div class="card">
+            <div class="card-head"><h3>Worker Information</h3></div>
+            <div class="card-body" id="workerInfo"></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Availability Status</h3></div>
+            <div class="card-body" id="availCard"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/socket.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/worker.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    async function loadWorkerProfile() {
+      try {
+        const data = await API.get('/api/worker/dashboard');
+        const w = data.worker;
+        const info = document.getElementById('workerInfo');
+        info.innerHTML = `
+          <div class="flex-center" style="justify-content:flex-start;gap:14px;margin-bottom:16px">
+            <div class="avatar lg">${initials(w.name)}</div>
+            <div><h4>${w.name}</h4><p class="text-muted">${w.category}</p></div>
+          </div>
+          ${[
+            ['Email', w.email],
+            ['Phone', w.phone || '—'],
+            ['Category', w.category],
+            ['Experience', `${w.experience || 0} years`],
+            ['Address', w.address || '—'],
+            ['Availability', availabilityBadge(w.availabilityStatus)],
+            ['Work Status', w.workStatus],
+            ['Current Tasks', w.currentTaskCount],
+            ['Completed Tasks', w.completedTaskCount],
+          ].map(([k, v]) => `
+            <div class="flex-between" style="padding:9px 0;border-bottom:1px solid var(--border)">
+              <span class="text-muted" style="font-weight:600;font-size:13px">${k}</span>
+              <span style="font-size:13.5px">${v}</span>
+            </div>`).join('')}`;
+
+        const avail = document.getElementById('availCard');
+        avail.innerHTML = `
+          <p class="text-muted mb-2" style="font-size:13px">Your current availability status. Set to OFFLINE when unavailable. You automatically become BUSY when tasks are assigned and AVAILABLE again when all are completed.</p>
+          <div class="form-group"><label class="form-label">Availability Status</label>
+            <select class="form-control no-icon" id="availSelect">
+              <option value="AVAILABLE" ${w.availabilityStatus === 'AVAILABLE' ? 'selected' : ''}>AVAILABLE</option>
+              <option value="BUSY" ${w.availabilityStatus === 'BUSY' ? 'selected' : ''}>BUSY</option>
+              <option value="OFFLINE" ${w.availabilityStatus === 'OFFLINE' ? 'selected' : ''}>OFFLINE</option>
+            </select>
+          </div>
+          <button class="btn btn-blue btn-block" id="availSave">Update Status</button>`;
+        document.getElementById('availSave').addEventListener('click', async () => {
+          const btn = document.getElementById('availSave');
+          setBtnLoading(btn, true, '', 'Updating...');
+          try {
+            await API.patch('/api/worker/status', { availabilityStatus: document.getElementById('availSelect').value });
+            toast.success('Availability status updated');
+            loadWorkerProfile();
+          } catch (e) {
+            toast.error('Failed to update status');
+          } finally {
+            setBtnLoading(btn, false);
+          }
+        });
+      } catch (e) {
+        toast.error('Failed to load profile');
+      }
+    }
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!requireAuth('WORKER')) return;
+      buildSidebar('WORKER', 'profile');
+      buildTopbar('WORKER');
+      loadWorkerProfile();
+      loadNotificationBadge('WORKER');
+    });
+  </script>
+</body>
+</html>

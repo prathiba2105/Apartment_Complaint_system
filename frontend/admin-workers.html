@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Workers - Apartment Care Admin</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar" id="appSidebar"></aside>
+    <div class="main-wrapper">
+      <header class="topbar" id="appTopbar"></header>
+      <main class="main-content">
+        <div class="page-header flex-between">
+          <div>
+            <div class="welcome-title">Workers</div>
+            <div class="welcome-sub">Manage maintenance staff</div>
+          </div>
+          <button class="btn btn-green" id="addWorkerBtn">+ Add Worker</button>
+        </div>
+
+        <div class="card">
+          <div class="card-head flex-between">
+            <h3>All Workers</h3>
+            <div class="flex gap-1">
+              <select class="filter-select" id="filterAvail">
+                <option value="">All Availability</option>
+                <option value="AVAILABLE">Available</option>
+                <option value="BUSY">Busy</option>
+                <option value="OFFLINE">Offline</option>
+              </select>
+              <select class="filter-select" id="filterCat">
+                <option value="">All Categories</option>
+              </select>
+            </div>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>Worker</th><th>Category</th><th>Experience</th><th>Phone</th><th>Email</th><th>Availability</th><th>Current Tasks</th><th>Completed</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="workersBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Add/Edit worker modal -->
+  <div class="modal-overlay" id="workerModal">
+    <div class="modal">
+      <div class="modal-header"><h3 id="workerModalTitle">Add Worker</h3><button class="modal-close" onclick="this.closest('.modal-overlay').classList.remove('open')">&times;</button></div>
+      <div class="modal-body">
+        <form id="workerForm">
+          <div class="form-group"><label class="form-label">Name</label><input class="form-control no-icon" id="w_name" required/></div>
+          <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-control no-icon" id="w_email" required/></div>
+          <div class="form-group" id="pwField"><label class="form-label">Password</label><input type="password" class="form-control no-icon" id="w_password" minlength="6"/></div>
+          <div class="form-group"><label class="form-label">Phone</label><input class="form-control no-icon" id="w_phone"/></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Category</label>
+              <select class="form-control no-icon" id="w_category"><option>Plumbing</option><option>Electrical</option><option>Cleaning</option><option>Security</option><option>Carpentry</option><option>Painting</option><option>Lift Maintenance</option><option>Water Maintenance</option><option>Other</option></select>
+            </div>
+            <div class="form-group"><label class="form-label">Experience</label><input type="number" min="0" class="form-control no-icon" id="w_experience"/></div>
+          </div>
+          <div class="form-group"><label class="form-label">Address</label><input class="form-control no-icon" id="w_address"/></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').classList.remove('open')">Cancel</button>
+        <button class="btn btn-green" id="workerSave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/socket.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    let allWorkers = [];
+    async function loadWorkers() {
+      try {
+        const data = await API.get('/api/admin/workers');
+        allWorkers = data.workers || [];
+        populateCatFilter();
+        renderWorkers(allWorkers);
+      } catch (e) {
+        document.getElementById('workersBody').innerHTML = '<tr><td colspan="11"><div class="empty-state">Failed to load workers.</div></td></tr>';
+      }
+    }
+    function populateCatFilter() {
+      const cats = [...new Set(allWorkers.map((w) => w.category))];
+      const sel = document.getElementById('filterCat');
+      sel.innerHTML = '<option value="">All Categories</option>' + cats.map((c) => `<option>${c}</option>`).join('');
+    }
+    function renderWorkers(list) {
+      const tbody = document.getElementById('workersBody');
+      if (!list.length) { tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state">No workers found.</div></td></tr>'; return; }
+      tbody.innerHTML = list.map((w) => `
+        <tr>
+          <td><div class="flex-center" style="justify-content:flex-start;gap:8px"><div class="avatar sm">${initials(w.name)}</div>${w.name}</div></td>
+          <td><span class="badge badge-active">${w.category}</span></td>
+          <td class="muted-cell">${w.experience || 0} yrs</td>
+          <td class="muted-cell">${w.phone || '—'}</td>
+          <td class="muted-cell">${w.email}</td>
+          <td>${availabilityBadge(w.availabilityStatus)}</td>
+          <td>${w.currentTaskCount || 0}</td>
+          <td>${w.completedTaskCount || 0}</td>
+          <td>${activeBadge(w.isActive)}</td>
+          <td>
+            <button class="btn btn-outline btn-sm" data-view="${w._id}">View</button>
+            <button class="btn btn-blue btn-sm" data-edit="${w._id}">Edit</button>
+            <button class="btn btn-sm ${w.isActive ? 'btn-danger' : 'btn-green'}" data-toggle="${w._id}">${w.isActive ? 'Disable' : 'Enable'}</button>
+            <button class="btn btn-danger btn-sm" data-del="${w._id}">Delete</button>
+          </td>
+        </tr>`).join('');
+      tbody.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => openWorkerView(b.dataset.view)));
+      tbody.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => openWorkerEdit(b.dataset.edit)));
+      tbody.querySelectorAll('[data-toggle]').forEach((b) => b.addEventListener('click', async () => {
+        const w = allWorkers.find((x) => x._id === b.dataset.toggle);
+        try {
+          await API.patch(`/api/admin/workers/${b.dataset.toggle}/status`, { isActive: !w.isActive });
+          toast.success('Worker status updated');
+          loadWorkers();
+        } catch (e) { toast.error('Failed to update'); }
+      }));
+      tbody.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
+        if (!confirm('Delete this worker? Their active tasks will be unassigned.')) return;
+        try {
+          await API.del(`/api/admin/workers/${b.dataset.del}`);
+          toast.success('Worker deleted');
+          loadWorkers();
+        } catch (e) { toast.error(e.message || 'Failed to delete worker'); }
+      }));
+    }
+    async function openWorkerView(id) {
+      try {
+        const data = await API.get(`/api/admin/workers/${id}`);
+        const w = data.worker;
+        const complaints = data.complaints || [];
+        const modal = document.getElementById('userModal');
+        document.getElementById('userModalTitle').textContent = w.name;
+        document.getElementById('userModalBody').innerHTML = `
+          <div class="mini-profile mb-2"><div class="avatar lg purple">${initials(w.name)}</div><div><h4>${w.name}</h4><p class="text-muted">${w.category}</p></div></div>
+          <div style="font-size:14px">
+            <div class="flex-between" style="padding:6px 0"><span class="text-muted">Email</span><span>${w.email}</span></div>
+            <div class="flex-between" style="padding:6px 0"><span class="text-muted">Phone</span><span>${w.phone || '—'}</span></div>
+            <div class="flex-between" style="padding:6px 0"><span class="text-muted">Experience</span><span>${w.experience || 0} yrs</span></div>
+            <div class="flex-between" style="padding:6px 0"><span class="text-muted">Availability</span><span>${availabilityBadge(w.availabilityStatus)}</span></div>
+            <div class="flex-between" style="padding:6px 0"><span class="text-muted">Current Tasks</span><span>${w.currentTaskCount}</span></div>
+            <div class="flex-between" style="padding:6px 0"><span class="text-muted">Completed</span><span>${w.completedTaskCount}</span></div>
+          </div>
+          <div class="divider"></div><h4 class="mb-2" style="font-size:15px">Tasks</h4>
+          ${complaints.length ? complaints.map((c) => `<div class="flex-between" style="padding:7px 0;border-bottom:1px solid var(--border)"><span>${c.title}</span><span>${statusBadge(c.status)}</span></div>`).join('') : '<div class="empty-state" style="padding:20px">No tasks</div>'}`;
+        modal.classList.add('open');
+      } catch (e) { toast.error('Failed to load worker'); }
+    }
+    window.__editingWorker = null;
+    function openWorkerEdit(id) {
+      const w = allWorkers.find((x) => x._id === id);
+      if (!w) return;
+      window.__editingWorker = w;
+      document.getElementById('workerModalTitle').textContent = 'Edit Worker';
+      document.getElementById('w_name').value = w.name;
+      document.getElementById('w_email').value = w.email;
+      document.getElementById('w_phone').value = w.phone || '';
+      document.getElementById('w_category').value = w.category;
+      document.getElementById('w_experience').value = w.experience || 0;
+      document.getElementById('w_address').value = w.address || '';
+      document.getElementById('pwField').style.display = 'none';
+      document.getElementById('workerModal').classList.add('open');
+    }
+    document.getElementById('addWorkerBtn').addEventListener('click', () => {
+      window.__editingWorker = null;
+      document.getElementById('workerModalTitle').textContent = 'Add Worker';
+      document.getElementById('workerForm').reset();
+      document.getElementById('pwField').style.display = 'block';
+      document.getElementById('workerModal').classList.add('open');
+    });
+    document.getElementById('workerSave').addEventListener('click', async () => {
+      const btn = document.getElementById('workerSave');
+      setBtnLoading(btn, true, '', 'Saving...');
+      try {
+        const payload = {
+          name: document.getElementById('w_name').value,
+          email: document.getElementById('w_email').value,
+          phone: document.getElementById('w_phone').value,
+          category: document.getElementById('w_category').value,
+          experience: document.getElementById('w_experience').value,
+          address: document.getElementById('w_address').value,
+        };
+        if (window.__editingWorker) {
+          await API.put(`/api/admin/workers/${window.__editingWorker._id}`, payload);
+          toast.success('Worker updated successfully');
+        } else {
+          payload.password = document.getElementById('w_password').value;
+          await API.post('/api/admin/workers', payload);
+          toast.success('Worker added successfully');
+        }
+        document.getElementById('workerModal').classList.remove('open');
+        loadWorkers();
+      } catch (e) { toast.error(e.message || 'Failed to save worker'); }
+      finally { setBtnLoading(btn, false); }
+    });
+    document.getElementById('filterAvail').addEventListener('change', applyFilters);
+    document.getElementById('filterCat').addEventListener('change', applyFilters);
+    function applyFilters() {
+      const a = document.getElementById('filterAvail').value;
+      const c = document.getElementById('filterCat').value;
+      renderWorkers(allWorkers.filter((w) => (!a || w.availabilityStatus === a) && (!c || w.category === c)));
+    }
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!requireAuth('ADMIN')) return;
+      buildSidebar('ADMIN', 'workers');
+      buildTopbar('ADMIN');
+      loadWorkers();
+    });
+  </script>
+
+  <div class="modal-overlay" id="userModal">
+    <div class="modal">
+      <div class="modal-header"><h3 id="userModalTitle">Worker</h3><button class="modal-close" onclick="this.closest('.modal-overlay').classList.remove('open')">&times;</button></div>
+      <div class="modal-body" id="userModalBody"></div>
+    </div>
+  </div>
+</body>
+</html>

@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Complaints - Apartment Care Admin</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar" id="appSidebar"></aside>
+    <div class="main-wrapper">
+      <header class="topbar" id="appTopbar"></header>
+      <main class="main-content">
+        <div class="page-header flex-between">
+          <div>
+            <div class="welcome-title">Complaints</div>
+            <div class="welcome-sub">Manage all complaints</div>
+          </div>
+          <div class="flex gap-1" style="flex-wrap:wrap">
+            <div class="search-input">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="searchComplaints" placeholder="Search ID / title..." />
+            </div>
+            <select class="filter-select" id="filterStatus">
+              <option value="">All Status</option>
+              <option>PENDING</option><option>ASSIGNED</option><option>IN_PROGRESS</option><option>COMPLETED</option><option>CLOSED</option><option>CANCELLED</option><option>REOPENED</option>
+            </select>
+            <select class="filter-select" id="filterPriority">
+              <option value="">All Priority</option>
+              <option>Low</option><option>Medium</option><option>High</option><option>Emergency</option>
+            </select>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>All Complaints</h3></div>
+          <div class="card-body" style="padding:0;">
+            <div class="table-wrap">
+              <table class="table">
+                <thead><tr><th>#</th><th>Title</th><th>Flat</th><th>Category</th><th>Priority</th><th>Status</th><th>Worker</th><th>Action</th></tr></thead>
+                <tbody id="adminComplaintsBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Assign modal -->
+  <div class="modal-overlay" id="assignModal">
+    <div class="modal lg">
+      <div class="modal-header"><h3>Assign / Reassign Worker</h3><button class="modal-close" onclick="closeModal('assignModal')">&times;</button></div>
+      <div class="modal-body">
+        <p class="mb-2"><strong>Complaint:</strong> <span id="assignComplaintTitle"></span></p>
+        <p class="text-muted mb-2" style="font-size:13px">Select a worker. Matching category &amp; available workers recommended first.</p>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Expected Completion Date</label>
+            <input type="date" class="form-control no-icon" id="assignExpectedDate" />
+          </div>
+          <div class="form-group">
+            <label class="form-label">Instructions for Worker</label>
+            <input class="form-control no-icon" id="assignInstructions" placeholder="e.g. Carry pipe repair kit" />
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead><tr><th>Worker</th><th>Category</th><th>Experience</th><th>Availability</th><th>Current Tasks</th></tr></thead>
+            <tbody id="assignWorkerBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('assignModal')">Cancel</button>
+        <button class="btn btn-purple" id="confirmAssignBtn">Assign</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/socket.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    let allComplaints = [];
+    async function loadComplaints() {
+      const s = document.getElementById('filterStatus') ? document.getElementById('filterStatus').value : '';
+      const p = document.getElementById('filterPriority') ? document.getElementById('filterPriority').value : '';
+      const q = document.getElementById('searchComplaints') ? document.getElementById('searchComplaints').value : '';
+      try {
+        const data = await API.get(`/api/admin/complaints?status=${encodeURIComponent(s)}&priority=${encodeURIComponent(p)}&search=${encodeURIComponent(q)}`);
+        allComplaints = data.complaints || [];
+        renderComplaints(allComplaints);
+      } catch (e) {
+        document.getElementById('adminComplaintsBody').innerHTML = '<tr><td colspan="8"><div class="empty-state">Failed to load complaints.</div></td></tr>';
+      }
+    }
+    function renderComplaints(list) {
+      const tbody = document.getElementById('adminComplaintsBody');
+      if (!list.length) { tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state">No complaints found.</div></td></tr>'; return; }
+      tbody.innerHTML = list.map((c, i) => {
+        const user = c.userId || {};
+        const worker = c.assignedWorker ? c.assignedWorker.name : '—';
+        const canAssign = c.status === 'PENDING' || c.status === 'REOPENED';
+        return `
+        <tr>
+          <td class="muted-cell">${c.complaintId}</td>
+          <td class="title-cell"><a href="complaint-details.html?id=${c._id}" style="color:var(--navy)">${c.title}</a></td>
+          <td>Flat ${user.flat || '—'}</td>
+          <td><span class="badge badge-active">${c.category}</span></td>
+          <td>${priorityBadge(c.priority)}</td>
+          <td>${statusBadge(c.status)}</td>
+          <td>${worker}</td>
+          <td>
+            <button class="btn btn-outline btn-sm" data-view="${c._id}">View</button>
+            ${canAssign ? `<button class="btn btn-purple btn-sm" data-assign="${c._id}">Assign</button>` : `<button class="btn btn-blue btn-sm" data-assign="${c._id}">Reassign</button>`}
+          </td>
+        </tr>`; }).join('');
+      tbody.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => (window.location.href = `complaint-details.html?id=${b.dataset.view}`)));
+      tbody.querySelectorAll('[data-assign]').forEach((b) => b.addEventListener('click', () => {
+        const c = allComplaints.find((x) => x._id === b.dataset.assign);
+        if (c) openAssignModal(c);
+      }));
+    }
+    document.getElementById('confirmAssignBtn').addEventListener('click', async () => {
+      const btn = document.getElementById('confirmAssignBtn');
+      setBtnLoading(btn, true, '', 'Assigning...');
+      try {
+        if (!window.__selectedWorker) return toast.warning('Please select a worker');
+        const body = { workerId: window.__selectedWorker._id };
+        const expEl = document.getElementById('assignExpectedDate');
+        const instrEl = document.getElementById('assignInstructions');
+        if (expEl && expEl.value) body.expectedDate = expEl.value;
+        if (instrEl && instrEl.value) body.instructions = instrEl.value;
+        const res = await API.post(`/api/admin/complaints/${window.__assignComplaintId}/assign`, body);
+        toast.success(res.message || 'Assigned successfully');
+        closeModal('assignModal');
+        loadComplaints();
+      } catch (e) { toast.error(e.message || 'Unable to assign worker'); }
+      finally { setBtnLoading(btn, false); }
+    });
+    const debounceC = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+    document.getElementById('filterStatus').addEventListener('change', loadComplaints);
+    document.getElementById('filterPriority').addEventListener('change', loadComplaints);
+    document.getElementById('searchComplaints').addEventListener('input', debounceC(loadComplaints, 300));
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!requireAuth('ADMIN')) return;
+      buildSidebar('ADMIN', 'complaints');
+      buildTopbar('ADMIN');
+      loadComplaints();
+      onRealtimeEvents({ complaintAssigned: loadComplaints, complaintStatusUpdated: loadComplaints });
+    });
+  </script>
+</body>
+</html>

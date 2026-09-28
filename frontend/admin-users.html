@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Users - Apartment Care Admin</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar" id="appSidebar"></aside>
+    <div class="main-wrapper">
+      <header class="topbar" id="appTopbar"></header>
+      <main class="main-content">
+        <div class="page-header flex-between">
+          <div>
+            <div class="welcome-title">Users</div>
+            <div class="welcome-sub">Manage apartment residents</div>
+          </div>
+          <div class="flex gap-1" style="flex-wrap:wrap">
+            <div class="search-input">
+              <span class="search-icon">🔍</span>
+              <input type="text" id="searchUsers" placeholder="Search name, email, flat..." />
+            </div>
+            <select class="filter-select" id="filterStatusUser">
+              <option value="">All Status</option>
+              <option value="active">Active</option>
+              <option value="inactive">Inactive</option>
+            </select>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-head"><h3>All Users</h3></div>
+          <div class="card-body" style="padding:0;">
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr><th>Name</th><th>Email</th><th>Phone</th><th>Apartment</th><th>Location</th><th>Complaints</th><th>Status</th><th>Registered</th><th>Action</th></tr>
+                </thead>
+                <tbody id="usersBody"></tbody>
+              </table>
+            </div>
+            <div id="usersPagination" class="pagination-row"></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/socket.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    let allUsers = [];
+    let currentPage = 1;
+    async function loadUsers() {
+      const q = (document.getElementById('searchUsers').value || '').trim();
+      const st = document.getElementById('filterStatusUser') ? document.getElementById('filterStatusUser').value : '';
+      try {
+        const data = await API.get(`/api/admin/users?page=${currentPage}&limit=12&search=${encodeURIComponent(q)}&status=${st}`);
+        allUsers = data.users || [];
+        renderUsers(allUsers);
+        renderPagination(data.total || allUsers.length, 12, currentPage);
+      } catch (e) {
+        document.getElementById('usersBody').innerHTML = '<tr><td colspan="10"><div class="empty-state">Failed to load users.</div></td></tr>';
+      }
+    }
+    function renderPagination(total, perPage, page) {
+      const el = document.getElementById('usersPagination');
+      if (!el) return;
+      const pages = Math.ceil(total / perPage);
+      if (pages <= 1) { el.innerHTML = ''; return; }
+      el.innerHTML = `Page ${page} of ${pages} ` +
+        `<button class="btn btn-outline btn-sm" ${page <= 1 ? 'disabled' : ''} onclick="currentPage=${page - 1};loadUsers()">Prev</button> ` +
+        `<button class="btn btn-outline btn-sm" ${page >= pages ? 'disabled' : ''} onclick="currentPage=${page + 1};loadUsers()">Next</button>`;
+    }
+    function renderUsers(list) {
+      const tbody = document.getElementById('usersBody');
+      if (!list.length) {
+        tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state">No users found.</div></td></tr>';
+        return;
+      }
+      tbody.innerHTML = list.map((u) => `
+        <tr>
+          <td><div class="flex-center" style="justify-content:flex-start;gap:8px"><div class="avatar sm">${initials(u.name)}</div>${u.name}</div></td>
+          <td class="muted-cell">${u.email}</td>
+          <td class="muted-cell">${u.phone || '—'}</td>
+          <td>${u.apartment || '—'}</td>
+          <td class="muted-cell">Block ${u.block || '—'}, F${u.floor || '—'} Flat ${u.flat || '—'}</td>
+          <td><span class="badge badge-active">${u.complaintCount || 0}</span></td>
+          <td>${activeBadge(u.isActive)}</td>
+          <td class="muted-cell">${formatDate(u.createdAt)}</td>
+          <td><button class="btn btn-outline btn-sm" data-view="${u._id}">View</button>
+              <button class="btn btn-sm ${u.isActive ? 'btn-danger' : 'btn-green'}" data-toggle="${u._id}">${u.isActive ? 'Disable' : 'Enable'}</button>
+              <button class="btn btn-danger btn-sm" data-del="${u._id}">Delete</button></td>
+        </tr>`).join('');
+      tbody.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => openUserModal(b.dataset.view)));
+      tbody.querySelectorAll('[data-toggle]').forEach((b) => b.addEventListener('click', async () => {
+        const user = allUsers.find((u) => u._id === b.dataset.toggle);
+        try {
+          await API.patch(`/api/admin/users/${b.dataset.toggle}/status`, { isActive: !user.isActive });
+          toast.success('User status updated');
+          loadUsers();
+        } catch (e) { toast.error('Failed to update'); }
+      }));
+      tbody.querySelectorAll('[data-del]').forEach((b) => b.addEventListener('click', async () => {
+        if (!confirm('Delete this user and all their complaints? This cannot be undone.')) return;
+        try {
+          await API.del(`/api/admin/users/${b.dataset.del}`);
+          toast.success('User deleted');
+          loadUsers();
+        } catch (e) { toast.error(e.message || 'Failed to delete user'); }
+      }));
+    }
+    async function openUserModal(id) {
+      try {
+        const data = await API.get(`/api/admin/users/${id}`);
+        const u = data.user;
+        const complaints = data.complaints || [];
+        const modal = document.getElementById('userModal');
+        document.getElementById('userModalTitle').textContent = u.name;
+        document.getElementById('userModalBody').innerHTML = `
+          <div class="mini-profile mb-2">
+            <div class="avatar lg">${initials(u.name)}</div>
+            <div><h4>${u.name}</h4><p class="text-muted">${u.email}</p></div>
+          </div>
+          <div style="font-size:14px">
+            <div class="flex-between" style="padding:6px 0"><span class="text-muted">Phone</span><span>${u.phone || '—'}</span></div>
+            <div class="flex-between" style="padding:6px 0"><span class="text-muted">Apartment</span><span>${u.apartment || '—'}</span></div>
+            <div class="flex-between" style="padding:6px 0"><span class="text-muted">Location</span><span>Block ${u.block || '—'}, Floor ${u.floor || '—'}, Flat ${u.flat || '—'}</span></div>
+            <div class="flex-between" style="padding:6px 0"><span class="text-muted">Complaints</span><span>${complaints.length}</span></div>
+          </div>
+          <div class="divider"></div>
+          <h4 class="mb-2" style="font-size:15px">Complaints</h4>
+          ${complaints.length ? complaints.map((c) => `<div class="flex-between" style="padding:7px 0;border-bottom:1px solid var(--border)"><span>${c.title}</span><span>${statusBadge(c.status)}</span></div>`).join('') : '<div class="empty-state" style="padding:20px">No complaints</div>'}`;
+        modal.classList.add('open');
+      } catch (e) {
+        toast.error('Failed to load user');
+      }
+    }
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!requireAuth('ADMIN')) return;
+      buildSidebar('ADMIN', 'users');
+      buildTopbar('ADMIN');
+      loadUsers();
+      const debounce = (fn, ms) => { let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); }; };
+      document.getElementById('searchUsers').addEventListener('input', debounce(() => {
+        currentPage = 1;
+        loadUsers();
+      }, 300));
+      const stEl = document.getElementById('filterStatusUser');
+      if (stEl) stEl.addEventListener('change', () => { currentPage = 1; loadUsers(); });
+    });
+  </script>
+
+  <div class="modal-overlay" id="userModal">
+    <div class="modal">
+      <div class="modal-header"><h3 id="userModalTitle">User</h3><button class="modal-close" onclick="this.closest('.modal-overlay').classList.remove('open')">&times;</button></div>
+      <div class="modal-body" id="userModalBody"></div>
+    </div>
+  </div>
+</body>
+</html>

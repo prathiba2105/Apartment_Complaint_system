@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reports - Apartment Care Admin</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar" id="appSidebar"></aside>
+    <div class="main-wrapper">
+      <header class="topbar" id="appTopbar"></header>
+      <main class="main-content">
+        <div class="page-header flex-between">
+          <div>
+            <div class="welcome-title">Reports &amp; Analytics</div>
+            <div class="welcome-sub">Operational insights calculated from live data</div>
+          </div>
+          <button class="btn btn-green" id="exportCsvBtn">⬇ Export CSV</button>
+        </div>
+
+        <div class="stats-grid" id="reportStatsGrid"></div>
+
+        <div class="dash-grid-2 mt-3">
+          <div class="card">
+            <div class="card-head"><h3>Complaints by Category</h3></div>
+            <div class="card-body"><div class="chart-box"><canvas id="reportCategoryChart"></canvas></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Complaints by Status</h3></div>
+            <div class="card-body"><div class="chart-box"><canvas id="reportStatusChart"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="dash-grid-2 mt-3">
+          <div class="card">
+            <div class="card-head"><h3>Monthly Trend</h3></div>
+            <div class="card-body"><div class="chart-box"><canvas id="reportMonthChart"></canvas></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Complaints by Priority</h3></div>
+            <div class="card-body"><div class="chart-box"><canvas id="reportPriorityChart"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="card mt-3">
+          <div class="card-head"><h3>Worker Performance Ranking</h3></div>
+          <div class="card-body" style="padding:0;">
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr><th>Rank</th><th>Worker</th><th>Category</th><th>Assigned</th><th>Completed</th><th>In Progress</th><th>Rejected</th><th>Avg Rating</th><th>Avg Completion (days)</th><th>Availability</th></tr>
+                </thead>
+                <tbody id="workerPerfBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/socket.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    let reportMonthChart = null;
+    let reportCategoryChart = null;
+    let reportStatusChart = null;
+    let reportPriorityChart = null;
+    let cached = null;
+
+    function renderReportStats(r) {
+      const cards = [
+        { label: 'Total Complaints', val: r.totalComplaints || 0, color: '#5B3FA3' },
+        { label: 'Resolved', val: r.completedComplaints || 0, color: '#20A866' },
+        { label: 'Pending', val: r.pendingComplaints || 0, color: '#E97E22' },
+        { label: 'Avg Resolution (hrs)', val: r.avgResolutionHours || 0, color: '#1769AA' },
+        { label: 'Completion Rate', val: (r.completionRate || 0) + '%', color: '#123E73' },
+        { label: 'Today / Week / Month', val: `${r.todayCount||0} / ${r.weekCount||0} / ${r.monthCount||0}`, color: '#8A6ACB' },
+      ];
+      const grid = document.getElementById('reportStatsGrid');
+      if (!grid) return;
+      grid.innerHTML = cards.map((c) => `
+        <div class="stat-card" style="--stat-color:${c.color}">
+          <div class="stat-val">${c.val}</div>
+          <div class="stat-label">${c.label}</div>
+        </div>`).join('');
+    }
+
+    function renderReportCharts(r) {
+      if (typeof Chart === 'undefined') return;
+      const palette = ['#5B3FA3', '#1769AA', '#20A866', '#E97E22', '#D64545', '#2CBF77', '#8A6ACB', '#123E73'];
+      if (reportMonthChart) reportMonthChart.destroy();
+      if (reportCategoryChart) reportCategoryChart.destroy();
+      if (reportStatusChart) reportStatusChart.destroy();
+      if (reportPriorityChart) reportPriorityChart.destroy();
+
+      const monthCtx = document.getElementById('reportMonthChart');
+      if (monthCtx) {
+        reportMonthChart = new Chart(monthCtx, {
+          type: 'line',
+          data: { labels: (r.byMonth || []).map((m) => m.month), datasets: [{ label: 'Complaints', data: (r.byMonth || []).map((m) => m.count), borderColor: '#1769AA', backgroundColor: 'rgba(23,105,170,0.12)', fill: true, tension: 0.4 }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } },
+        });
+      }
+      const catCtx = document.getElementById('reportCategoryChart');
+      if (catCtx) {
+        reportCategoryChart = new Chart(catCtx, {
+          type: 'bar',
+          data: { labels: (r.byCategory || []).map((c) => c.name), datasets: [{ label: 'Complaints', data: (r.byCategory || []).map((c) => c.count), backgroundColor: palette.slice(0, (r.byCategory||[]).length), borderRadius: 6 }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, ticks: { precision: 0 } }, x: { grid: { display: false } } } },
+        });
+      }
+      const statusCtx = document.getElementById('reportStatusChart');
+      if (statusCtx) {
+        reportStatusChart = new Chart(statusCtx, {
+          type: 'pie',
+          data: { labels: (r.byStatus || []).map((s) => s.name), datasets: [{ data: (r.byStatus || []).map((s) => s.count), backgroundColor: palette, borderWidth: 2, borderColor: '#fff' }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } },
+        });
+      }
+      const prioCtx = document.getElementById('reportPriorityChart');
+      if (prioCtx) {
+        reportPriorityChart = new Chart(prioCtx, {
+          type: 'doughnut',
+          data: { labels: (r.byPriority || []).map((p) => p.name), datasets: [{ data: (r.byPriority || []).map((p) => p.count), backgroundColor: palette, borderWidth: 2, borderColor: '#fff' }] },
+          options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } },
+        });
+      }
+    }
+
+    function renderWorkerPerf(perf) {
+      const tbody = document.getElementById('workerPerfBody');
+      if (!perf || !perf.length) { tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state">No worker data.</div></td></tr>'; return; }
+      tbody.innerHTML = perf.map((w, i) => `
+        <tr>
+          <td><span class="badge badge-active">#${i + 1}</span></td>
+          <td><strong>${w.name}</strong></td>
+          <td>${w.category || '—'}</td>
+          <td>${w.totalAssigned || 0}</td>
+          <td>${w.completed || 0}</td>
+          <td>${w.inProgress || 0}</td>
+          <td>${w.rejected || 0}</td>
+          <td>${w.averageRating ? `${w.averageRating} ★ (${w.ratingCount})` : '—'}</td>
+          <td>${w.avgCompletionDays ?? '—'}</td>
+          <td>${availabilityBadge(w.availabilityStatus)}</td>
+        </tr>`).join('');
+    }
+
+    async function loadReports() {
+      try {
+        const [r, perf] = await Promise.all([
+          API.get('/api/admin/reports'),
+          API.get('/api/admin/reports/worker-performance'),
+        ]);
+        cached = r;
+        renderReportStats(r);
+        renderReportCharts(r);
+        renderWorkerPerf(perf);
+      } catch (e) {
+        toast.error(e.message || 'Failed to load reports');
+      }
+    }
+
+    function exportCsv() {
+      if (!cached) { toast.warning('No data to export'); return; }
+      const rows = [['Report', 'Apartment Care'], ['Total Complaints', cached.totalComplaints || 0], ['Resolved', cached.completedComplaints || 0], ['Pending', cached.pendingComplaints || 0], ['Avg Resolution (hrs)', cached.avgResolutionHours || 0], ['', ''], ['Category', 'Count']];
+      (cached.byCategory || []).forEach((c) => rows.push([c.name, c.count]));
+      rows.push(['', ''], ['Status', 'Count']);
+      (cached.byStatus || []).forEach((s) => rows.push([s.name, s.count]));
+      rows.push(['', ''], ['Priority', 'Count']);
+      (cached.byPriority || []).forEach((p) => rows.push([p.name, p.count]));
+      const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'apartment-care-report.csv';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!requireAuth('ADMIN')) return;
+      buildSidebar('ADMIN', 'reports');
+      buildTopbar('ADMIN');
+      loadReports();
+      loadNotificationBadge('ADMIN');
+    });
+  </script>
+</body>
+</html>

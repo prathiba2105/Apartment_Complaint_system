@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Categories - Apartment Care Admin</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar" id="appSidebar"></aside>
+    <div class="main-wrapper">
+      <header class="topbar" id="appTopbar"></header>
+      <main class="main-content">
+        <div class="page-header flex-between">
+          <div>
+            <div class="welcome-title">Complaint Categories</div>
+            <div class="welcome-sub">Manage complaint categories and assign default worker types</div>
+          </div>
+          <button class="btn btn-green" id="addCategoryBtn">+ Add Category</button>
+        </div>
+
+        <div class="card">
+          <div class="card-head"><h3>All Categories</h3></div>
+          <div class="card-body" style="padding:0;">
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr><th>Icon</th><th>Name</th><th>Description</th><th>Worker Type</th><th>Default Priority</th><th>Status</th><th>Action</th></tr>
+                </thead>
+                <tbody id="categoriesBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Add/Edit category modal -->
+  <div class="modal-overlay" id="categoryModal">
+    <div class="modal">
+      <div class="modal-header"><h3 id="categoryModalTitle">Add Category</h3><button class="modal-close" onclick="this.closest('.modal-overlay').classList.remove('open')">&times;</button></div>
+      <div class="modal-body">
+        <form id="categoryForm">
+          <div class="form-group"><label class="form-label">Category Name</label><input class="form-control no-icon" id="c_name" required/></div>
+          <div class="form-group"><label class="form-label">Icon (emoji)</label><input class="form-control no-icon" id="c_icon" placeholder="🚿" /></div>
+          <div class="form-group"><label class="form-label">Description</label><textarea class="form-control no-icon" id="c_description"></textarea></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Assigned Worker Type</label>
+              <select class="form-control no-icon" id="c_workerType">
+                <option value="">Select worker type</option>
+                <option>Plumber</option><option>Electrician</option><option>Carpenter</option><option>Cleaner</option><option>Painter</option><option>AC Technician</option><option>Security</option><option>Maintenance Worker</option><option>Gardener</option><option>Lift Technician</option><option>Other</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Default Priority</label>
+              <select class="form-control no-icon" id="c_priorityDefault">
+                <option>Low</option><option selected>Medium</option><option>High</option><option>Emergency</option>
+              </select>
+            </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="this.closest('.modal-overlay').classList.remove('open')">Cancel</button>
+        <button class="btn btn-green" id="categorySave">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/socket.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    let allCats = [];
+    async function loadCategories() {
+      try {
+        const data = await API.get('/api/admin/categories');
+        allCats = Array.isArray(data) ? data : data.categories || [];
+        renderCategories(allCats);
+      } catch (e) {
+        document.getElementById('categoriesBody').innerHTML = '<tr><td colspan="7"><div class="empty-state">Failed to load categories.</div></td></tr>';
+      }
+    }
+    function renderCategories(list) {
+      const tbody = document.getElementById('categoriesBody');
+      if (!list.length) { tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state">No categories found.</div></td></tr>'; return; }
+      tbody.innerHTML = list.map((c) => `
+        <tr>
+          <td>${c.icon || '🏷️'}</td>
+          <td><strong>${c.name}</strong></td>
+          <td class="muted-cell">${c.description || '—'}</td>
+          <td>${c.assignedWorkerType || '—'}</td>
+          <td>${priorityBadge(c.priorityDefault) || '—'}</td>
+          <td>${activeBadge(c.isActive)}</td>
+          <td>
+            <button class="btn btn-blue btn-sm" data-edit="${c._id}">Edit</button>
+            <button class="btn btn-sm ${c.isActive ? 'btn-danger' : 'btn-green'}" data-toggle="${c._id}">${c.isActive ? 'Disable' : 'Enable'}</button>
+          </td>
+        </tr>`).join('');
+      tbody.querySelectorAll('[data-edit]').forEach((b) => b.addEventListener('click', () => openEdit(b.dataset.edit)));
+      tbody.querySelectorAll('[data-toggle]').forEach((b) => b.addEventListener('click', async () => {
+        const c = allCats.find((x) => x._id === b.dataset.toggle);
+        try {
+          await API.put(`/api/admin/categories/${c._id}`, { isActive: !c.isActive });
+          toast.success('Category status updated');
+          loadCategories();
+        } catch (e) { toast.error('Failed to update'); }
+      }));
+    }
+    window.__editingCat = null;
+    function openEdit(id) {
+      const c = allCats.find((x) => x._id === id);
+      if (!c) return;
+      window.__editingCat = c;
+      document.getElementById('categoryModalTitle').textContent = 'Edit Category';
+      document.getElementById('c_name').value = c.name;
+      document.getElementById('c_icon').value = c.icon || '';
+      document.getElementById('c_description').value = c.description || '';
+      document.getElementById('c_workerType').value = c.assignedWorkerType || '';
+      document.getElementById('c_priorityDefault').value = c.priorityDefault || 'Medium';
+      document.getElementById('categoryModal').classList.add('open');
+    }
+    document.getElementById('addCategoryBtn').addEventListener('click', () => {
+      window.__editingCat = null;
+      document.getElementById('categoryModalTitle').textContent = 'Add Category';
+      document.getElementById('categoryForm').reset();
+      document.getElementById('categoryModal').classList.add('open');
+    });
+    document.getElementById('categorySave').addEventListener('click', async () => {
+      const btn = document.getElementById('categorySave');
+      setBtnLoading(btn, true, '', 'Saving...');
+      const payload = {
+        name: document.getElementById('c_name').value,
+        icon: document.getElementById('c_icon').value,
+        description: document.getElementById('c_description').value,
+        assignedWorkerType: document.getElementById('c_workerType').value,
+        priorityDefault: document.getElementById('c_priorityDefault').value,
+      };
+      try {
+        if (window.__editingCat) {
+          await API.put(`/api/admin/categories/${window.__editingCat._id}`, payload);
+          toast.success('Category updated');
+        } else {
+          await API.post('/api/admin/categories', payload);
+          toast.success('Category added');
+        }
+        document.getElementById('categoryModal').classList.remove('open');
+        loadCategories();
+      } catch (e) { toast.error(e.message || 'Failed to save category'); }
+      finally { setBtnLoading(btn, false); }
+    });
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!requireAuth('ADMIN')) return;
+      buildSidebar('ADMIN', 'categories');
+      buildTopbar('ADMIN');
+      loadCategories();
+      loadNotificationBadge('ADMIN');
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Settings - Apartment Care Admin</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar" id="appSidebar"></aside>
+    <div class="main-wrapper">
+      <header class="topbar" id="appTopbar"></header>
+      <main class="main-content">
+        <div class="page-header">
+          <div class="welcome-title">Settings</div>
+          <div class="welcome-sub">Application configuration stored dynamically</div>
+        </div>
+
+        <form id="settingsForm">
+          <div class="card mt-1">
+            <div class="card-head"><h3>Admin Profile</h3></div>
+            <div class="card-body">
+              <div class="form-row">
+                <div class="form-group"><label class="form-label">Name</label><input class="form-control no-icon" id="s_adminName" /></div>
+                <div class="form-group"><label class="form-label">Email</label><input class="form-control no-icon" id="s_adminEmail" /></div>
+              </div>
+              <div class="form-group"><label class="form-label">Phone</label><input class="form-control no-icon" id="s_adminPhone" /></div>
+            </div>
+          </div>
+
+          <div class="card mt-1">
+            <div class="card-head"><h3>Notification Settings</h3></div>
+            <div class="card-body">
+              <div class="toggle-row"><span>New complaint alerts</span><input type="checkbox" id="s_notifNew" /></div>
+              <div class="toggle-row"><span>Emergency alerts</span><input type="checkbox" id="s_notifEmergency" /></div>
+              <div class="toggle-row"><span>Worker rejected assignment alerts</span><input type="checkbox" id="s_notifReject" /></div>
+              <div class="toggle-row"><span>Overdue complaint alerts</span><input type="checkbox" id="s_notifOverdue" /></div>
+            </div>
+          </div>
+
+          <div class="card mt-1">
+            <div class="card-head"><h3>Complaint Settings</h3></div>
+            <div class="card-body">
+              <div class="form-group"><label class="form-label">Default Priority</label>
+                <select class="form-control no-icon" id="s_defaultPriority"><option>Low</option><option>Medium</option><option>High</option><option>Emergency</option></select>
+              </div>
+              <div class="toggle-row"><span>Auto-assign complaints</span><input type="checkbox" id="s_autoAssign" /></div>
+              <div class="toggle-row"><span>Allow multiple images</span><input type="checkbox" id="s_multiImages" /></div>
+            </div>
+          </div>
+
+          <div class="card mt-1">
+            <div class="card-head"><h3>Worker Settings</h3></div>
+            <div class="card-body">
+              <div class="toggle-row"><span>Strict worker availability (only available workers get assignments)</span><input type="checkbox" id="s_strictAvail" /></div>
+            </div>
+          </div>
+
+          <div class="card mt-1">
+            <div class="card-head"><h3>Application</h3></div>
+            <div class="card-body">
+              <div class="form-row">
+                <div class="form-group"><label class="form-label">App Name</label><input class="form-control no-icon" id="s_appName" /></div>
+                <div class="form-group"><label class="form-label">Support Email</label><input class="form-control no-icon" id="s_supportEmail" /></div>
+                <div class="form-group"><label class="form-label">Support Phone</label><input class="form-control no-icon" id="s_supportPhone" /></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="mt-3" style="text-align:right">
+            <button type="submit" class="btn btn-green" id="settingsSave" style="padding:12px 28px;">Save Settings</button>
+          </div>
+        </form>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/socket.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    function setVal(id, v) {
+      const el = document.getElementById(id);
+      if (el) el.value = v != null ? v : '';
+    }
+    function setChecked(id, v) {
+      const el = document.getElementById(id);
+      if (el) el.checked = !!v;
+    }
+    async function loadSettings() {
+      try {
+        const s = await API.get('/api/admin/settings');
+        setVal('s_adminName', s.adminProfile && s.adminProfile.name);
+        setVal('s_adminEmail', s.adminProfile && s.adminProfile.email);
+        setVal('s_adminPhone', s.adminProfile && s.adminProfile.phone);
+        setChecked('s_notifNew', s.notification && s.notification.newComplaint);
+        setChecked('s_notifEmergency', s.notification && s.notification.emergencyAlert);
+        setChecked('s_notifReject', s.notification && s.notification.workerReject);
+        setChecked('s_notifOverdue', s.notification && s.notification.overdue);
+        setVal('s_defaultPriority', s.complaint && s.complaint.defaultPriority);
+        setChecked('s_autoAssign', s.complaint && s.complaint.autoAssign);
+        setChecked('s_multiImages', s.complaint && s.complaint.allowMultipleImages);
+        setChecked('s_strictAvail', s.worker && s.worker.strictAvailability);
+        setVal('s_appName', s.app && s.app.name);
+        setVal('s_supportEmail', s.app && s.app.supportEmail);
+        setVal('s_supportPhone', s.app && s.app.supportPhone);
+      } catch (e) {
+        toast.error(e.message || 'Failed to load settings');
+      }
+    }
+    document.getElementById('settingsForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('settingsSave');
+      setBtnLoading(btn, true, '', 'Saving...');
+      const payload = {
+        adminProfile: {
+          name: document.getElementById('s_adminName').value,
+          email: document.getElementById('s_adminEmail').value,
+          phone: document.getElementById('s_adminPhone').value,
+        },
+        notification: {
+          newComplaint: document.getElementById('s_notifNew').checked,
+          emergencyAlert: document.getElementById('s_notifEmergency').checked,
+          workerReject: document.getElementById('s_notifReject').checked,
+          overdue: document.getElementById('s_notifOverdue').checked,
+        },
+        complaint: {
+          defaultPriority: document.getElementById('s_defaultPriority').value,
+          autoAssign: document.getElementById('s_autoAssign').checked,
+          allowMultipleImages: document.getElementById('s_multiImages').checked,
+        },
+        worker: { strictAvailability: document.getElementById('s_strictAvail').checked },
+        app: {
+          name: document.getElementById('s_appName').value,
+          supportEmail: document.getElementById('s_supportEmail').value,
+          supportPhone: document.getElementById('s_supportPhone').value,
+        },
+      };
+      try {
+        await API.put('/api/admin/settings', payload);
+        toast.success('Settings saved successfully');
+      } catch (err) { toast.error(err.message || 'Failed to save settings'); }
+      finally { setBtnLoading(btn, false); }
+    });
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!requireAuth('ADMIN')) return;
+      buildSidebar('ADMIN', 'settings');
+      buildTopbar('ADMIN');
+      loadSettings();
+      loadNotificationBadge('ADMIN');
+    });
+  </script>
+</body>
+</html>

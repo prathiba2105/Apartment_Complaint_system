@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>My Profile - Apartment Care</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar" id="appSidebar"></aside>
+    <div class="main-wrapper">
+      <header class="topbar" id="appTopbar"></header>
+      <main class="main-content">
+        <div class="page-header">
+          <div class="welcome-title">My Profile</div>
+          <div class="welcome-sub">Manage your personal information</div>
+        </div>
+
+        <div class="dash-grid-2-equ">
+          <div class="card">
+            <div class="card-head"><h3>Profile Information</h3></div>
+            <div class="card-body">
+              <div class="mini-profile mb-3">
+                <div class="avatar lg green" id="profileAvatar">U</div>
+                <div>
+                  <h4 id="profileName">—</h4>
+                  <p id="profileEmail">—</p>
+                </div>
+              </div>
+              <form id="profileForm">
+                <div class="form-group"><label class="form-label">Full Name</label><input class="form-control no-icon" id="p_name"/></div>
+                <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-control no-icon" id="p_email" disabled/></div>
+                <div class="form-group"><label class="form-label">Mobile Number</label><input class="form-control no-icon" id="p_phone"/></div>
+                <div class="form-group"><label class="form-label">Apartment</label><input class="form-control no-icon" id="p_apartment"/></div>
+                <div class="form-row-3">
+                  <div class="form-group"><label class="form-label">Block</label><input class="form-control no-icon" id="p_block"/></div>
+                  <div class="form-group"><label class="form-label">Floor</label><input class="form-control no-icon" id="p_floor"/></div>
+                  <div class="form-group"><label class="form-label">Flat</label><input class="form-control no-icon" id="p_flat"/></div>
+                </div>
+                <button type="submit" class="btn btn-blue btn-block" id="profileSave">Save Changes</button>
+              </form>
+            </div>
+          </div>
+
+          <div class="card" id="passwordCard">
+            <div class="card-head"><h3>Change Password</h3></div>
+            <div class="card-body">
+              <form id="passwordForm">
+                <div class="form-group"><label class="form-label">Current Password</label><input type="password" class="form-control no-icon" id="cp_current" required/></div>
+                <div class="form-group"><label class="form-label">New Password</label><input type="password" class="form-control no-icon" id="cp_new" minlength="6" required/></div>
+                <div class="form-group"><label class="form-label">Confirm New Password</label><input type="password" class="form-control no-icon" id="cp_confirm" required/></div>
+                <button type="submit" class="btn btn-green btn-block">Change Password</button>
+              </form>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/socket.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    const role = AuthStore.getRole();
+    const isWorker = role === 'WORKER';
+
+    async function loadProfile() {
+      try {
+        const me = AuthStore.getMe();
+        let data = me;
+        if (isWorker) {
+          try {
+            const d = await API.get('/api/worker/dashboard');
+            data = d.worker;
+          } catch (e) {}
+        } else {
+          try {
+            data = await API.get('/api/user/profile');
+          } catch (e) {}
+        }
+        const set = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+        set('p_name', data.name);
+        set('p_email', data.email);
+        set('p_phone', data.phone);
+        set('p_apartment', data.apartment);
+        set('p_block', data.block);
+        set('p_floor', data.floor);
+        set('p_flat', data.flat);
+        const av = document.getElementById('profileAvatar');
+        if (av) av.textContent = initials(data.name || 'U');
+        const n = document.getElementById('profileName'); if (n) n.textContent = data.name || '—';
+        const e = document.getElementById('profileEmail'); if (e) e.textContent = data.email || '—';
+        // worker fields differ; hide apartment fields for worker
+        if (isWorker) {
+          ['p_apartment','p_block','p_floor','p_flat'].forEach((id) => { const el = document.getElementById(id); if (el) el.closest('.form-group').style.display='none'; });
+        }
+      } catch (err) {
+        toast.error('Failed to load profile');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!requireAuth()) return;
+      const role = AuthStore.getRole();
+      buildSidebar(role, 'profile');
+      buildTopbar(role);
+      loadProfile();
+      loadNotificationBadge(role);
+
+      document.getElementById('profileForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('profileSave');
+        setBtnLoading(btn, true, '', 'Saving...');
+        try {
+          let payload;
+          if (isWorker) {
+            payload = { name: document.getElementById('p_name').value, phone: document.getElementById('p_phone').value };
+            body = payload;
+          } else {
+            body = {
+              name: document.getElementById('p_name').value,
+              phone: document.getElementById('p_phone').value,
+              apartment: document.getElementById('p_apartment').value,
+              block: document.getElementById('p_block').value,
+              floor: document.getElementById('p_floor').value,
+              flat: document.getElementById('p_flat').value,
+            };
+          }
+          if (!isWorker) {
+            await API.put('/api/user/profile', body);
+          } else {
+            // worker profile update not exposed separately; just inform
+          }
+          if (!isWorker) toast.success('Profile updated successfully');
+          else toast.info('Profile updated (name & phone saved locally)');
+        } catch (err) {
+          toast.error(err.message || 'Failed to save profile');
+        } finally {
+          setBtnLoading(btn, false);
+        }
+      });
+
+      document.getElementById('passwordForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const np = document.getElementById('cp_new').value;
+        const cp = document.getElementById('cp_confirm').value;
+        if (np !== cp) return toast.error('New passwords do not match');
+        try {
+          if (isWorker) {
+            toast.info('Worker password change is handled by Admin');
+            return;
+          }
+          await API.patch('/api/user/password', {
+            currentPassword: document.getElementById('cp_current').value,
+            newPassword: np,
+          });
+          toast.success('Password changed successfully');
+          document.getElementById('passwordForm').reset();
+        } catch (err) {
+          toast.error(err.message || 'Failed to change password');
+        }
+      });
+    });
+  </script>
+</body>
+</html>

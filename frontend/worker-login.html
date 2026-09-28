@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Worker Login - Apartment Care</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-left">
+      <div class="brand-logo">
+        <div class="logo-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+            <path d="M3 21h18M5 21V8l7-4 7 4v13" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M9 21v-5h6v5" stroke="#2CBF77" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M10 8h1M13 8h1" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">Apartment Care</div>
+          <div class="brand-sub">Smart Apartment<br />Complaint Resolution System</div>
+        </div>
+      </div>
+      <div class="auth-slogan">
+        <h1>Smart Apartment<br />Complaint Resolution System</h1>
+        <div class="slogan">
+          <div class="line1">“Your complaint”</div>
+          <div class="line2">“Our responsibility”</div>
+        </div>
+      </div>
+      <div class="auth-illustration">
+        <!-- Maintenance worker illustration -->
+        <svg width="380" height="300" viewBox="0 0 380 300" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <ellipse cx="190" cy="280" rx="140" ry="18" fill="#C9E0F2"/>
+          <!-- legs -->
+          <rect x="158" y="220" width="22" height="60" rx="6" fill="#123E73"/>
+          <rect x="200" y="220" width="22" height="60" rx="6" fill="#123E73"/>
+          <rect x="152" y="276" width="34" height="12" rx="5" fill="#0B2748"/>
+          <rect x="194" y="276" width="34" height="12" rx="5" fill="#0B2748"/>
+          <!-- body (blue uniform) -->
+          <rect x="140" y="160" width="100" height="66" rx="14" fill="#1769AA"/>
+          <path d="M190 160 L190 226" stroke="#123E73" stroke-width="2"/>
+          <rect x="176" y="176" width="28" height="20" rx="4" fill="#fff" opacity="0.25"/>
+          <!-- belt -->
+          <rect x="140" y="214" width="100" height="10" rx="3" fill="#0B2748"/>
+          <!-- arms crossed -->
+          <path d="M140 180 L150 190 L168 178" fill="#1769AA"/>
+          <path d="M240 180 L230 190 L212 178" fill="#1769AA"/>
+          <circle cx="166" cy="180" r="15" fill="#2E5E93"/>
+          <circle cx="214" cy="180" r="15" fill="#2E5E93"/>
+          <!-- head -->
+          <circle cx="190" cy="140" r="30" fill="#F2C49B"/>
+          <!-- cap -->
+          <path d="M158 138 Q190 108 222 138 L222 148 Q190 128 158 148 Z" fill="#123E73"/>
+          <path d="M158 140 L222 140" stroke="#0B2748" stroke-width="3"/>
+          <path d="M188 110 L192 96 L198 110" fill="#FFD34D"/>
+          <!-- face -->
+          <circle cx="180" cy="142" r="3" fill="#2B2B2B"/>
+          <circle cx="200" cy="142" r="3" fill="#2B2B2B"/>
+          <path d="M182 154 Q190 160 198 154" stroke="#2B2B2B" stroke-width="2" fill="none"/>
+          <!-- tool bag -->
+          <rect x="232" y="196" width="30" height="34" rx="7" fill="#E97E22"/>
+          <rect x="238" y="200" width="18" height="8" rx="3" fill="#C96A1A"/>
+          <path d="M240 208 L250 222 M250 208 L240 222" stroke="#C96A1A" stroke-width="3" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="auth-right">
+      <div class="auth-card">
+        <div class="auth-card-head">
+          <div class="auth-card-icon blue">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h2>Worker Login</h2>
+          <p>Services team member access</p>
+        </div>
+
+        <form id="workerLoginForm">
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <div class="input-wrap">
+              <span class="field-icon">✉️</span>
+              <input type="email" class="form-control" id="email" placeholder="worker@example.com" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <div class="input-wrap password-wrap">
+              <span class="field-icon">🔒</span>
+              <input type="password" class="form-control" id="password" placeholder="Enter password" required />
+              <button type="button" class="toggle-pw" title="Show/Hide">👁️</button>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary btn-block" id="loginBtn">
+            Login
+          </button>
+        </form>
+
+        <div class="auth-switch">
+          Not a worker yet? <a href="worker-register.html">Register here</a>
+        </div>
+        <div class="auth-switch" style="margin-top:6px;">
+          Resident? <a href="user-login.html">User Login</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    document.getElementById('workerLoginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('loginBtn');
+      setBtnLoading(btn, true, '', 'Logging in...');
+      try {
+        const data = await API.post('/api/auth/worker/login', {
+          email: document.getElementById('email').value,
+          password: document.getElementById('password').value,
+        });
+        AuthStore.set(data);
+        toast.success('Login successful', 'Welcome back!');
+        setTimeout(() => (window.location.href = 'worker-dashboard.html'), 600);
+      } catch (err) {
+        handleAuthError(err);
+      } finally {
+        setBtnLoading(btn, false);
+      }
+    });
+  </script>
+</body>
+</html>

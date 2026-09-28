@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>New Complaint - Apartment Care</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar" id="appSidebar"></aside>
+    <div class="main-wrapper">
+      <header class="topbar" id="appTopbar"></header>
+      <main class="main-content">
+        <div class="page-header">
+          <div class="welcome-title">New Complaint</div>
+          <div class="welcome-sub">Submit a new maintenance request</div>
+        </div>
+
+        <div class="card" style="max-width:820px;">
+          <div class="card-body">
+            <form id="newComplaintForm">
+              <div class="form-group">
+                <label class="form-label">Complaint Title</label>
+                <input type="text" class="form-control no-icon" id="title" placeholder="e.g. Kitchen Sink Leakage" required />
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Description</label>
+                <textarea class="form-control no-icon" id="description" placeholder="Describe the issue in detail"></textarea>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Category</label>
+                  <select class="form-control no-icon" id="category" required></select>
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Priority</label>
+                  <select class="form-control no-icon" id="priority">
+                    <option value="Low">Low</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="High">High</option>
+                    <option value="Emergency">Emergency</option>
+                  </select>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Apartment</label>
+                  <input type="text" class="form-control no-icon" id="apartment" placeholder="Apartment name" />
+                </div>
+                <div class="form-row-3" style="gap:12px;">
+                  <div class="form-group">
+                    <label class="form-label">Block</label>
+                    <input type="text" class="form-control no-icon" id="block" placeholder="A" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Floor</label>
+                    <input type="number" min="1" class="form-control no-icon" id="floor" placeholder="2" />
+                  </div>
+                  <div class="form-group">
+                    <label class="form-label">Flat No.</label>
+                    <input type="text" class="form-control no-icon" id="flat" placeholder="204" />
+                  </div>
+                </div>
+              </div>
+
+              <div class="form-row">
+                <div class="form-group">
+                  <label class="form-label">Preferred Date</label>
+                  <input type="date" class="form-control no-icon" id="preferredDate" />
+                </div>
+                <div class="form-group">
+                  <label class="form-label">Preferred Time</label>
+                  <input type="time" class="form-control no-icon" id="preferredTime" />
+                </div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Image Upload</label>
+                <input type="file" class="form-control no-icon" id="image" accept="image/*" />
+                <div class="form-hint">Optional: attach a photo of the issue (uploads stored on server).</div>
+              </div>
+
+              <div class="form-group">
+                <label class="form-label">Additional Notes</label>
+                <textarea class="form-control no-icon" id="additionalNotes" placeholder="Any other relevant information"></textarea>
+              </div>
+
+              <button type="submit" class="btn btn-green btn-block" id="submitComplaintBtn" style="padding:13px;">
+                Submit Complaint
+              </button>
+            </form>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/socket.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/complaints.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!requireAuth('USER')) return;
+      buildSidebar('USER', 'new-complaint');
+      buildTopbar('USER');
+      setupNewComplaintForm();
+      loadNotificationBadge('USER');
+    });
+  </script>
+</body>
+</html>

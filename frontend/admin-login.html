@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Login - Apartment Care</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/auth.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-left">
+      <div class="brand-logo">
+        <div class="logo-icon">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+            <path d="M3 21h18M5 21V8l7-4 7 4v13" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            <path d="M9 21v-5h6v5" stroke="#2CBF77" stroke-width="1.6" stroke-linejoin="round"/>
+            <path d="M10 8h1M13 8h1" stroke="#fff" stroke-width="1.4" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title">Apartment Care</div>
+          <div class="brand-sub">Smart Apartment<br />Complaint Resolution System</div>
+        </div>
+      </div>
+      <div class="auth-slogan">
+        <h1>Smart Apartment<br />Complaint Resolution System</h1>
+        <div class="slogan">
+          <div class="line1">“Your complaint”</div>
+          <div class="line2">“Our responsibility”</div>
+        </div>
+      </div>
+      <div class="auth-illustration">
+        <svg width="440" height="260" viewBox="0 0 440 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M0 230 Q220 214 440 230 V260 H0 Z" fill="#7FC9A0"/>
+          <rect x="120" y="90" width="120" height="140" rx="6" fill="#5A9BD3"/>
+          <rect x="108" y="100" width="144" height="40" rx="5" fill="#4A8BC4"/>
+          <rect x="132" y="108" width="12" height="24" fill="#123E73"/>
+          <rect x="150" y="108" width="12" height="24" fill="#123E73"/>
+          <rect x="168" y="108" width="12" height="24" fill="#123E73"/>
+          <rect x="186" y="108" width="12" height="24" fill="#123E73"/>
+          <rect x="204" y="108" width="12" height="24" fill="#123E73"/>
+          <rect x="132" y="148" width="32" height="38" rx="3" fill="#E7F0FA"/>
+          <rect x="176" y="148" width="32" height="38" rx="3" fill="#E7F0FA"/>
+          <rect x="132" y="194" width="32" height="30" rx="3" fill="#E7F0FA"/>
+          <rect x="176" y="194" width="32" height="30" rx="3" fill="#E7F0FA"/>
+          <rect x="256" y="170" width="40" height="60" rx="3" fill="#FFE9A8"/>
+          <path d="M250 174 L276 160 L302 174 Z" fill="#E86A5E"/>
+          <circle cx="80" cy="196" r="16" fill="#4C9F70"/>
+          <rect x="77" y="202" width="6" height="30" fill="#8A5A3B"/>
+          <circle cx="370" cy="200" r="14" fill="#58B483"/>
+        </svg>
+      </div>
+    </div>
+
+    <div class="auth-right">
+      <a href="index.html" class="auth-back"><span class="back-ico">←</span> Back to Home</a>
+      <div class="auth-card" style="max-width:480px;">
+        <div class="auth-card-head">
+          <div class="auth-card-icon purple">
+            <svg width="26" height="26" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2l8 3v6c0 5-3.4 9.5-8 11-4.6-1.5-8-6-8-11V5l8-3z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
+              <path d="M9 12l2 2 4-4" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <h2>Admin Login</h2>
+          <p>Authorized personnel only</p>
+        </div>
+
+        <form id="adminLoginForm">
+          <div class="form-group">
+            <label class="form-label">Email Address</label>
+            <div class="input-wrap">
+              <span class="field-icon">✉️</span>
+              <input type="email" class="form-control" id="email" placeholder="admin@apartmentcare.com" required />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Password</label>
+            <div class="input-wrap password-wrap">
+              <span class="field-icon">🔒</span>
+              <input type="password" class="form-control" id="password" placeholder="Enter password" required />
+              <button type="button" class="toggle-pw" title="Show/Hide">👁️</button>
+            </div>
+          </div>
+          <div class="auth-links-row">
+            <label class="checkbox-label"><input type="checkbox" id="remember" /> Remember Me</label>
+            <a href="#">Forgot Password?</a>
+          </div>
+          <button type="submit" class="btn btn-purple btn-block" id="loginBtn">
+            Login
+          </button>
+        </form>
+
+        <div class="security-card">
+          <div class="shield">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+              <path d="M12 2l8 3v6c0 5-3.4 9.5-8 11-4.6-1.5-8-6-8-11V5l8-3z" stroke="#fff" stroke-width="1.6" stroke-linejoin="round"/>
+              <path d="M9 12l2 2 4-4" stroke="#fff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="sc-title">Secure Admin Access</div>
+            <div class="sc-text">Manage Users, Workers, Complaints and Apartment Operations</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/api.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    document.getElementById('adminLoginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const btn = document.getElementById('loginBtn');
+      setBtnLoading(btn, true, '', 'Logging in...');
+      try {
+        const data = await API.post('/api/auth/admin/login', {
+          email: document.getElementById('email').value,
+          password: document.getElementById('password').value,
+        });
+        AuthStore.set(data);
+        toast.success('Login successful', 'Welcome Admin!');
+        setTimeout(() => (window.location.href = 'admin-dashboard.html'), 600);
+      } catch (err) {
+        handleAuthError(err);
+      } finally {
+        setBtnLoading(btn, false);
+      }
+    });
+  </script>
+</body>
+</html>

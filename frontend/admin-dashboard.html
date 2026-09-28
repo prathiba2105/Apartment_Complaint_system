@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Dashboard - Apartment Care</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar" id="appSidebar"></aside>
+    <div class="main-wrapper">
+      <header class="topbar" id="appTopbar"></header>
+      <main class="main-content">
+        <div class="page-header flex-between">
+          <div>
+            <div class="welcome-title">Admin Dashboard</div>
+            <div class="welcome-sub">Overview of apartment operations</div>
+          </div>
+        </div>
+
+        <div class="stats-grid" id="adminStatsGrid"></div>
+
+        <div class="dash-grid-2 mt-3">
+          <div class="card">
+            <div class="card-head"><h3>Complaints by Month</h3></div>
+            <div class="card-body"><div class="chart-box"><canvas id="complaintMonthChart"></canvas></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Quick Actions</h3></div>
+            <div class="card-body">
+              <div class="quick-actions">
+                <button class="qa-btn" data-qa="addWorker">
+                  <div class="qa-icon">🛠️</div>
+                  <div class="qa-label">Add New Worker</div>
+                </button>
+                <button class="qa-btn" data-qa="addCategory">
+                  <div class="qa-icon">🏷️</div>
+                  <div class="qa-label">Add Category</div>
+                </button>
+                <button class="qa-btn" data-qa="assignWorker">
+                  <div class="qa-icon">🔗</div>
+                  <div class="qa-label">Assign Worker</div>
+                </button>
+                <button class="qa-btn" data-qa="sendNotification">
+                  <div class="qa-icon">📣</div>
+                  <div class="qa-label">Send Notification</div>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="dash-grid-2-equ mt-3">
+          <div class="card">
+            <div class="card-head"><h3>Recent Complaints</h3></div>
+            <div class="card-body" style="padding:0;">
+              <div class="table-wrap">
+                <table class="table">
+                  <thead>
+                    <tr><th>#</th><th>Complaint</th><th>Flat</th><th>Status</th><th>Date</th></tr>
+                  </thead>
+                  <tbody id="recentAdminComplaintsBody"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Workers by Category</h3></div>
+            <div class="card-body"><div class="chart-box"><canvas id="workerCategoryChart"></canvas></div></div>
+          </div>
+        </div>
+
+        <div class="dash-grid-3 mt-3">
+          <div class="card">
+            <div class="card-head"><h3>Complaints by Status</h3></div>
+            <div class="card-body"><div class="chart-box"><canvas id="complaintStatusChart"></canvas></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Complaints by Category</h3></div>
+            <div class="card-body"><div class="chart-box"><canvas id="complaintCategoryChart"></canvas></div></div>
+          </div>
+          <div class="card">
+            <div class="card-head"><h3>Worker Performance</h3></div>
+            <div class="card-body"><div class="chart-box" style="min-height:240px"><canvas id="workerPerformanceChart"></canvas></div></div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Assign worker modal -->
+  <div class="modal-overlay" id="assignModal">
+    <div class="modal lg">
+      <div class="modal-header">
+        <h3>Assign Worker</h3>
+        <button class="modal-close" onclick="closeModal('assignModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p class="mb-2"><strong>Complaint:</strong> <span id="assignComplaintTitle"></span></p>
+        <p class="text-muted mb-2" style="font-size:13px">Select a worker to assign. Matching category and available workers are recommended first.</p>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr><th>Worker</th><th>Category</th><th>Experience</th><th>Availability</th><th>Current Tasks</th></tr>
+            </thead>
+            <tbody id="assignWorkerBody"></tbody>
+          </table>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('assignModal')">Cancel</button>
+        <button class="btn btn-purple" id="confirmAssignBtn" onclick="submitAssignment()">Assign Worker</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add worker modal -->
+  <div class="modal-overlay" id="addWorkerModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Add New Worker</h3>
+        <button class="modal-close" onclick="closeModal('addWorkerModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addWorkerForm">
+          <div class="form-group"><label class="form-label">Full Name</label><input class="form-control no-icon" id="aw_name" required/></div>
+          <div class="form-group"><label class="form-label">Email</label><input type="email" class="form-control no-icon" id="aw_email" required/></div>
+          <div class="form-group"><label class="form-label">Password</label><input type="password" class="form-control no-icon" id="aw_password" minlength="6" required/></div>
+          <div class="form-group"><label class="form-label">Phone</label><input class="form-control no-icon" id="aw_phone"/></div>
+          <div class="form-row">
+            <div class="form-group"><label class="form-label">Category</label>
+              <select class="form-control no-icon" id="aw_category" required>
+                <option value="">Select</option>
+                <option>Plumbing</option><option>Electrical</option><option>Cleaning</option><option>Security</option><option>Carpentry</option><option>Painting</option><option>Lift Maintenance</option><option>Water Maintenance</option><option>Other</option>
+              </select>
+            </div>
+            <div class="form-group"><label class="form-label">Experience (yrs)</label><input type="number" min="0" class="form-control no-icon" id="aw_experience"/></div>
+          </div>
+          <div class="form-group"><label class="form-label">Address</label><input class="form-control no-icon" id="aw_address"/></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('addWorkerModal')">Cancel</button>
+        <button class="btn btn-green" id="aw_submit">Add Worker</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add category modal -->
+  <div class="modal-overlay" id="addCategoryModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Add Category</h3>
+        <button class="modal-close" onclick="closeModal('addCategoryModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="addCategoryForm">
+          <div class="form-group"><label class="form-label">Category Name</label><input class="form-control no-icon" id="ac_name" required/></div>
+          <div class="form-group"><label class="form-label">Description</label><textarea class="form-control no-icon" id="ac_description"></textarea></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('addCategoryModal')">Cancel</button>
+        <button class="btn btn-green" id="ac_submit">Add Category</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Send notification modal -->
+  <div class="modal-overlay" id="notifyModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>Send Notification</h3>
+        <button class="modal-close" onclick="closeModal('notifyModal')">&times;</button>
+      </div>
+      <div class="modal-body">
+        <form id="notifyForm">
+          <div class="form-group"><label class="form-label">Recipient Type</label>
+            <select class="form-control no-icon" id="nt_type">
+              <option value="User">User</option>
+              <option value="Worker">Worker</option>
+            </select>
+          </div>
+          <div class="form-group"><label class="form-label">Recipient ID</label><input class="form-control no-icon" id="nt_userId" placeholder="MongoDB user/worker ID"/></div>
+          <div class="form-group"><label class="form-label">Title</label><input class="form-control no-icon" id="nt_title" required/></div>
+          <div class="form-group"><label class="form-label">Message</label><textarea class="form-control no-icon" id="nt_message" required></textarea></div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-ghost" onclick="closeModal('notifyModal')">Cancel</button>
+        <button class="btn btn-purple" id="nt_submit">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/socket.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!requireAuth('ADMIN')) return;
+      buildSidebar('ADMIN', 'dashboard');
+      buildTopbar('ADMIN');
+      initSocket();
+      loadAdminDashboard();
+      loadNotificationBadge('ADMIN');
+
+      // Quick actions
+      document.querySelectorAll('[data-qa]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const action = btn.dataset.qa;
+          if (action === 'addWorker') document.getElementById('addWorkerModal').classList.add('open');
+          else if (action === 'addCategory') document.getElementById('addCategoryModal').classList.add('open');
+          else if (action === 'assignWorker') pickComplaintToAssign();
+          else if (action === 'sendNotification') document.getElementById('notifyModal').classList.add('open');
+        });
+      });
+
+      // Add worker submit
+      document.getElementById('aw_submit').addEventListener('click', async () => {
+        const btn = document.getElementById('aw_submit');
+        setBtnLoading(btn, true, '', 'Adding...');
+        try {
+          await API.post('/api/admin/workers', {
+            name: document.getElementById('aw_name').value,
+            email: document.getElementById('aw_email').value,
+            password: document.getElementById('aw_password').value,
+            phone: document.getElementById('aw_phone').value,
+            category: document.getElementById('aw_category').value,
+            experience: document.getElementById('aw_experience').value,
+            address: document.getElementById('aw_address').value,
+          });
+          toast.success('Worker added successfully');
+          closeModal('addWorkerModal');
+          document.getElementById('addWorkerForm').reset();
+        } catch (e) { toast.error(e.message || 'Failed to add worker'); }
+        finally { setBtnLoading(btn, false); }
+      });
+
+      // Add category submit
+      document.getElementById('ac_submit').addEventListener('click', async () => {
+        const btn = document.getElementById('ac_submit');
+        setBtnLoading(btn, true, '', 'Adding...');
+        try {
+          await API.post('/api/admin/categories', {
+            name: document.getElementById('ac_name').value,
+            description: document.getElementById('ac_description').value,
+          });
+          toast.success('Category added successfully');
+          closeModal('addCategoryModal');
+          document.getElementById('addCategoryForm').reset();
+        } catch (e) { toast.error(e.message || 'Failed to add category'); }
+        finally { setBtnLoading(btn, false); }
+      });
+
+      // Send notification submit
+      document.getElementById('nt_submit').addEventListener('click', async () => {
+        const btn = document.getElementById('nt_submit');
+        setBtnLoading(btn, true, '', 'Sending...');
+        try {
+          await API.post('/api/admin/notification', {
+            userId: document.getElementById('nt_userId').value,
+            userModel: document.getElementById('nt_type').value,
+            title: document.getElementById('nt_title').value,
+            message: document.getElementById('nt_message').value,
+          });
+          toast.success('Notification sent');
+          closeModal('notifyModal');
+          document.getElementById('notifyForm').reset();
+        } catch (e) { toast.error(e.message || 'Failed to send notification'); }
+        finally { setBtnLoading(btn, false); }
+      });
+
+      // realtime updates for admin
+      onRealtimeEvents({
+        complaintAssigned: () => loadAdminDashboard(),
+        complaintStatusUpdated: () => loadAdminDashboard(),
+        workerStatusUpdated: () => loadAdminDashboard(),
+        notificationCreated: () => loadNotificationBadge('ADMIN'),
+        newMessage: () => loadNotificationBadge('ADMIN'),
+      });
+    });
+
+    async function pickComplaintToAssign() {
+      try {
+        const data = await API.get('/api/admin/complaints');
+        const complaints = data.complaints || [];
+        const pending = complaints.filter((c) => c.status === 'PENDING');
+        if (!pending.length) {
+          toast.warning('No pending complaints to assign');
+          return;
+        }
+        openAssignModal(pending[0]);
+      } catch (e) {
+        toast.error('Failed to load complaints');
+      }
+    }
+  </script>
+</body>
+</html>

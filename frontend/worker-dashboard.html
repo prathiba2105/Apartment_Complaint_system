@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Worker Dashboard - Apartment Care</title>
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <div class="dashboard">
+    <aside class="sidebar" id="appSidebar"></aside>
+    <div class="main-wrapper">
+      <header class="topbar" id="appTopbar"></header>
+      <main class="main-content">
+        <div class="page-header flex-between">
+          <div>
+            <div class="welcome-title" id="welcomeName">Welcome 👋</div>
+            <div class="welcome-sub" id="welcomeSub">Loading your tasks...</div>
+          </div>
+        </div>
+
+        <div class="stats-grid" id="statsGrid"></div>
+
+        <div class="card mt-3">
+          <div class="card-head">
+            <h3>Assigned Complaints</h3>
+          </div>
+          <div class="card-body" style="padding:0;">
+            <div class="table-wrap">
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th>#</th><th>Title</th><th>Flat No.</th><th>Category</th><th>Priority</th><th>Status</th><th>Action</th>
+                  </tr>
+                </thead>
+                <tbody id="workerComplaintsBody"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/socket.js"></script>
+  <script src="js/common.js"></script>
+  <script src="js/worker.js"></script>
+  <script src="js/notifications.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      if (!requireAuth('WORKER')) return;
+      buildSidebar('WORKER', 'dashboard');
+      buildTopbar('WORKER');
+      initSocket();
+      setupWorkerRealtime();
+      loadNotificationBadge('WORKER');
+      loadWorkerDashboard();
+    });
+  </script>
+</body>
+</html>

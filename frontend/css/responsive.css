@@ -1,0 +1,56 @@
+/* ========================================
+   Apartment Care - Responsive Styles
+   ======================================== */
+
+/* -------- Auth pages responsive -------- */
+@media (max-width: 992px) {
+  .auth-left { width: 34%; padding: 40px 30px; }
+  .auth-slogan h1 { font-size: 24px; }
+  .auth-slogan .slogan { font-size: 15px; }
+}
+
+@media (max-width: 768px) {
+  .auth-page { flex-direction: column; }
+  .auth-left {
+    width: 100%;
+    padding: 28px 24px;
+    position: relative;
+  }
+  .auth-left .auth-slogan { display: none; }
+  .auth-left .auth-illustration { display: none; }
+  .auth-right { padding: 28px 16px; }
+  .auth-card { padding: 28px 22px; }
+  .form-row, .form-row-3 { grid-template-columns: 1fr; gap: 0; }
+}
+
+/* -------- Dashboard responsive (mobile sidebar) -------- */
+@media (max-width: 1024px) {
+  .sidebar {
+    width: 240px;
+    transform: translateX(-100%);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .main-wrapper { margin-left: 0; }
+  .hamburger { display: inline-flex; }
+  .topbar-title { display: block; }
+}
+
+@media (max-width: 768px) {
+  .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 14px; }
+  .dash-grid-2, .dash-grid-2-equ, .dash-grid-3 { grid-template-columns: 1fr; }
+  .main-content { padding: 18px; }
+  .topbar { padding: 0 16px; }
+  .topbar-user .u-info { display: none; }
+  .search-input input { min-width: 160px; }
+  .welcome-title { font-size: 20px; }
+  .table thead th, .table tbody td { padding: 10px; }
+  .modal { width: calc(100% - 20px); }
+}
+
+@media (max-width: 480px) {
+  .stats-grid { grid-template-columns: 1fr; }
+  .card-body { padding: 16px; }
+  .card-head { padding: 14px 16px; }
+  .form-row-3 { grid-template-columns: 1fr; }
+  .topbar-right { gap: 10px; }
+}
